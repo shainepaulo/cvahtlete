@@ -1,0 +1,37 @@
+{
+  "id": "dembele",
+  "first": "Ousmane",
+  "last": "Dembélé",
+  "sport": "Football",
+  "emoji": "⚽",
+  "discipline": "Ailier · Attaquant",
+  "tagline": "L'ailier le plus déroutant de sa génération.",
+  "location": "Paris, France",
+  "colors": { "a": "#c6f932", "b": "#5cf0c0" },
+  "avatar": "images/3.webp",
+  "verified": true,
+  "stats": [
+    { "label": "Âge", "value": "28", "unit": "ans" },
+    { "label": "Sélections 🇫🇷", "value": "57", "unit": "" },
+    { "label": "Buts internationaux", "value": "7", "unit": "⚽" },
+    { "label": "Valeur marchande", "value": "100", "unit": "M€" },
+    { "label": "Pied", "value": "Ambidextre", "unit": "" },
+    { "label": "Taille", "value": "1.78", "unit": "m" }
+  ],
+  "palmares": [
+    { "icon": "🏆", "name": "Coupe du Monde", "count": "1×" },
+    { "icon": "🏆", "name": "Ligue des Nations", "count": "1×" },
+    { "icon": "🏆", "name": "La Liga", "count": "1×" },
+    { "icon": "🏆", "name": "Ligue 1", "count": "3×" }
+  ],
+  "career": [
+    { "year": "2023 —", "club": "Paris Saint-Germain", "detail": "50 M€" },
+    { "year": "2017-23", "club": "FC Barcelone", "detail": "148 M€" },
+    { "year": "2016-17", "club": "Borussia Dortmund", "detail": "35 M€" },
+    { "year": "2015-16", "club": "Stade Rennais", "detail": "Formation" }
+  ],
+  "links": [
+    { "label": "Instagram", "icon": "instagram", "url": "https://www.instagram.com/o.dembele7/" },
+    { "label": "X", "icon": "x", "url": "https://x.com/Dembouz" }
+  ]
+}

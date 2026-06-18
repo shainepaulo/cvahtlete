@@ -1,101 +1,103 @@
-import Image from "next/image";
+import Link from 'next/link'
+import type { Metadata } from 'next'
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: 'ATHLETE CV — Ton CV d\'athlète, en un lien',
+}
+
+export default function HomePage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <>
+      {/* HERO */}
+      <header className="hero">
+        {/* Une seule image statique : le crossfade de 3 calques plein écran
+            en mix-blend-mode coûtait une recomposition GPU permanente */}
+        <div className="hero-montage" aria-hidden="true">
+          <img src="/images/nadal1.jpg" alt="" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+        <div className="hero-glyphs" aria-hidden="true">
+          <span style={{ left: '8%', top: '24%', animationDuration: '13s' }}>⚽</span>
+          <span style={{ left: '84%', top: '18%', animationDuration: '15s', animationDelay: '1s' }}>🎾</span>
+          <span style={{ left: '16%', top: '70%', animationDuration: '14s', animationDelay: '.6s' }}>🏀</span>
+          <span style={{ left: '78%', top: '66%', animationDuration: '16s', animationDelay: '1.4s' }}>⚡</span>
+          <span style={{ left: '90%', top: '44%', animationDuration: '15.5s', animationDelay: '.9s' }}>🏆</span>
+        </div>
+        <div className="container">
+          <div className="eyebrow reveal">
+            <span className="dot" />
+            Le CV des athlètes
+          </div>
+          <h1 className="display reveal" data-delay="1">
+            Ton CV d&apos;athlète,<br />
+            <span className="grad">en un lien.</span>
+          </h1>
+          <p className="lead reveal" data-delay="2">
+            Rassemble ton parcours, tes stats et tes moments forts sur une page unique. À mettre en
+            bio, à envoyer aux clubs et aux sponsors.
+          </p>
+          <div className="hero-actions reveal" data-delay="3">
+            <Link href="/exemples" className="btn btn-primary btn-lg">Voir des exemples</Link>
+            <Link href="/tarifs" className="btn btn-ghost btn-lg">Créer le mien</Link>
+          </div>
+        </div>
+        <div className="scroll-cue">
+          Découvrir
+          <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </header>
+
+      {/* UNE PAGE, TOUT TOI */}
+      <section className="section tall center">
+        <div className="container">
+          <span className="tag reveal">Une page. Tout toi.</span>
+          <h2 className="title reveal" data-delay="1">
+            Tout ton univers sportif,<br />réuni au même endroit.
+          </h2>
+          <p className="lead-2 reveal" data-delay="2">
+            Stats, palmarès, vidéos, parcours, contact. Fini les PDF dépassés et les DM brouillons.
+            Un CV vivant que tu partages d&apos;un seul lien.
+          </p>
+        </div>
+      </section>
+
+      {/* POUR QUI */}
+      <section className="section center">
+        <div className="container">
+          <span className="tag reveal">Fait pour être partagé</span>
+          <h2 className="title reveal" data-delay="1">Là où ça compte.</h2>
+          <div className="grid cols-3">
+            <div className="card reveal" data-delay="1">
+              <div className="ic">🔗</div>
+              <h3>En bio Instagram</h3>
+              <p>Un lien propre dans ta bio. Les recruteurs et fans accèdent à tout ton profil en un tap.</p>
+            </div>
+            <div className="card reveal" data-delay="2">
+              <div className="ic">🤝</div>
+              <h3>Aux sponsors</h3>
+              <p>Une vitrine qui inspire confiance. Présente ta valeur avant même le premier rendez-vous.</p>
+            </div>
+            <div className="card reveal" data-delay="3">
+              <div className="ic">🏟️</div>
+              <h3>Aux clubs &amp; agents</h3>
+              <p>Toutes tes infos essentielles, à jour, prêtes à convaincre. Sans dossier interminable.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="section center">
+        <div className="container reveal">
+          <h2 className="title">Prêt à te mettre<br />en valeur&nbsp;?</h2>
+          <p className="lead-2">Regarde ce que ça donne pour de vrais profils, puis crée le tien.</p>
+          <div className="hero-actions" style={{ marginTop: 36 }}>
+            <Link href="/exemples" className="btn btn-primary btn-lg">Voir les exemples</Link>
+            <Link href="/tarifs" className="btn btn-ghost btn-lg">Les offres</Link>
+          </div>
+        </div>
+      </section>
+    </>
+  )
 }
