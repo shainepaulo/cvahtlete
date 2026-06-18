@@ -1,127 +1,130 @@
 -- ============================================================================
--- ATHLETE CV — Migration 00001 : Schéma initial
--- Cible : Supabase (PostgreSQL 15+)
--- Convention : snake_case en base, mapping camelCase côté TypeScript (Étape 2).
---   planName            -> plan_name
---   planExpires         -> plan_expires
---   modificationsLeft   -> modifications_left
---   cineBg_url          -> cine_bg_url
---   photoPosX/Y         -> photo_pos_x / photo_pos_y
---   cropZoomAvatar      -> crop_zoom_avatar
--- Sémantique quota : modifications_left = NULL  => illimité (plan Pro/Club)
---                    modifications_left = N >= 0 => N modifications restantes
+-- ATHLETE CV — Migration initiale 00001
+-- Tables : profiles · cvs · subscriptions  (toutes liées à auth.users)
+-- Sécurité : RLS stricte partout + rôle "owner" (godpower) défini EN BASE.
+-- Paiements : colonnes Stripe préparées mais INACTIVES (rien à casser plus tard).
+-- À exécuter tel quel dans Supabase → SQL Editor.
 -- ============================================================================
 
--- ----------------------------------------------------------------------------
--- 0. Extensions
--- ----------------------------------------------------------------------------
-create extension if not exists "pgcrypto"; -- gen_random_uuid()
+create extension if not exists "pgcrypto";   -- gen_random_uuid()
 
--- ----------------------------------------------------------------------------
--- 1. Table public.users — extension métier de auth.users
--- ----------------------------------------------------------------------------
-create table public.users (
-  id                     uuid primary key references auth.users (id) on delete cascade,
-  email                  text,
-  plan                   text not null default 'free'
-                         check (plan in ('free', 'starter', 'pro', 'club')),
-  plan_name              text,
-  plan_expires           timestamptz,                -- NULL = paiement unique, pas d'expiration
-  modifications_left     integer default 0
-                         check (modifications_left is null or modifications_left >= 0),
-  entitlements_cinematic boolean not null default false,
-  entitlements_multi     boolean not null default false,
-  created_at             timestamptz not null default now(),
-  updated_at             timestamptz not null default now()
+-- ────────────────────────────────────────────────────────────────────────
+-- 1) PROFILES — 1:1 avec auth.users
+-- ────────────────────────────────────────────────────────────────────────
+create table public.profiles (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  email      text not null,
+  full_name  text not null default '',
+  is_owner   boolean not null default false,                -- godpower
+  plan       text not null default 'free'
+             check (plan in ('free','starter','pro','club')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-comment on table public.users is
-  'Profil métier 1:1 avec auth.users. Plan/quota/entitlements modifiables uniquement par le service_role (webhook de paiement).';
-
--- ----------------------------------------------------------------------------
--- 2. Table public.cv_data
--- ----------------------------------------------------------------------------
-create table public.cv_data (
+-- ────────────────────────────────────────────────────────────────────────
+-- 2) CVS — un CV par utilisateur (extensible plus tard)
+-- ────────────────────────────────────────────────────────────────────────
+create table public.cvs (
   id               uuid primary key default gen_random_uuid(),
-  user_id          uuid not null references public.users (id) on delete cascade,
-
-  -- Identité publique
-  slug             text not null unique
-                   check (slug ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$'), -- 1..40, kebab-case
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  slug             text not null unique,
   visibility       text not null default 'private'
-                   check (visibility in ('private', 'public')),
-
-  -- Identité athlète
+                   check (visibility in ('private','public')),
   first            text not null default '',
   last             text not null default '',
   sport            text not null default '',
   location         text not null default '',
-
-  -- Médias
+  tagline          text not null default '',
+  bio              text not null default '',
   avatar_url       text,
   cine_bg_url      text,
-
-  -- Recadrage avatar (formule front :
-  --   m = (z - 1) / 2 * 100
-  --   transform: translate(m*(1-x/50)%, m*(1-y/50)%) scale(z) )
-  photo_pos_x      numeric(5,2) not null default 50 check (photo_pos_x between 0 and 100),
-  photo_pos_y      numeric(5,2) not null default 50 check (photo_pos_y between 0 and 100),
-  crop_zoom_avatar numeric(4,2) not null default 1  check (crop_zoom_avatar between 1 and 4),
-
-  -- Données complexes
+  photo_pos_x      integer not null default 50,
+  photo_pos_y      integer not null default 50,
+  crop_zoom_avatar numeric not null default 1.4,
   stats            jsonb not null default '[]'::jsonb,
   palmares         jsonb not null default '[]'::jsonb,
   career           jsonb not null default '[]'::jsonb,
   links            jsonb not null default '[]'::jsonb,
   colors           jsonb not null default '{}'::jsonb,
-
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
+create index cvs_user_id_idx on public.cvs(user_id);
 
-create index cv_data_user_id_idx on public.cv_data (user_id);
-create index cv_data_public_idx  on public.cv_data (slug) where visibility = 'public';
+-- slug : minuscules/chiffres/tirets, 2–40 car., et mots réservés interdits
+alter table public.cvs add constraint cvs_slug_format
+  check (slug ~ '^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$');
+alter table public.cvs add constraint cvs_slug_reserved
+  check (slug not in (
+    'admin','api','app','auth','builder','login','signup','dashboard',
+    'cine','profil','exemples','sports','tarifs','cgv','checkout','concept',
+    'mentions-legales','mot-de-passe-oublie'
+  ));
 
--- Slugs réservés (routes de l'app)
-alter table public.cv_data add constraint cv_data_slug_reserved check (
-  slug not in ('admin','api','app','auth','builder','login','signup','pricing',
-               'dashboard','settings','www','cv','premium','checkout')
+-- ────────────────────────────────────────────────────────────────────────
+-- 3) SUBSCRIPTIONS — minimal, défaut 'free' pour ne jamais bloquer l'app.
+--    Colonnes Stripe présentes mais alimentées plus tard (webhook service_role).
+-- ────────────────────────────────────────────────────────────────────────
+create table public.subscriptions (
+  id                     uuid primary key default gen_random_uuid(),
+  user_id                uuid not null unique references auth.users(id) on delete cascade,
+  status                 text not null default 'free'
+                         check (status in ('free','active','trialing','past_due','canceled')),
+  plan                   text not null default 'free'
+                         check (plan in ('free','starter','pro','club')),
+  stripe_customer_id     text,
+  stripe_subscription_id text,
+  current_period_end     timestamptz,
+  created_at             timestamptz not null default now(),
+  updated_at             timestamptz not null default now()
 );
 
--- ----------------------------------------------------------------------------
--- 3. Triggers utilitaires
--- ----------------------------------------------------------------------------
+-- ────────────────────────────────────────────────────────────────────────
+-- 4) OWNER GODPOWER — helper + attribution automatique à l'inscription
+-- ────────────────────────────────────────────────────────────────────────
 
--- 3a. updated_at automatique
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
+-- is_owner(uid) : SECURITY DEFINER => lit profiles en CONTOURNANT la RLS,
+-- ce qui évite la récursion infinie quand une policy de profiles l'appelle.
+create or replace function public.is_owner(uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
 as $$
-begin
-  new.updated_at := now();
-  return new;
-end;
+  select coalesce((select is_owner from public.profiles where id = uid), false);
 $$;
 
-create trigger users_set_updated_at
-  before update on public.users
-  for each row execute function public.set_updated_at();
-
-create trigger cv_data_set_updated_at
-  before update on public.cv_data
-  for each row execute function public.set_updated_at();
-
--- 3b. Création automatique du profil métier à l'inscription
+-- À chaque nouvel utilisateur auth : crée profile + subscription.
+-- Le compte qui s'inscrit avec OWNER_EMAIL reçoit is_owner = true (godpower).
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  -- ⬇️⬇️ TON EMAIL OWNER (godpower) — change ICI si besoin ⬇️⬇️
+  owner_email constant text := 'shaine.paulo@gmail.com';
+  is_the_owner boolean := (lower(new.email) = lower(owner_email));
 begin
-  insert into public.users (id, email)
-  values (new.id, new.email)
-  on conflict (id) do nothing;
+  insert into public.profiles (id, email, full_name, is_owner, plan)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    is_the_owner,
+    case when is_the_owner then 'club' else 'free' end
+  );
+
+  insert into public.subscriptions (user_id, status, plan)
+  values (
+    new.id,
+    case when is_the_owner then 'active' else 'free' end,
+    case when is_the_owner then 'club'   else 'free' end
+  );
+
   return new;
 end;
 $$;
@@ -130,207 +133,85 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- 3c. Limite multi-profils : 1 CV max sans entitlement 'multi' (offre Club)
-create or replace function public.enforce_single_cv()
+-- Anti-escalade : un utilisateur normal ne peut PAS se promouvoir owner
+-- ni changer son plan. Seuls le owner ou le service_role (auth.uid() null) le peuvent.
+create or replace function public.guard_profile_privileges()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  if not exists (
-    select 1 from public.users u
-    where u.id = new.user_id and u.entitlements_multi
-  )
-  and (select count(*) from public.cv_data c where c.user_id = new.user_id) >= 1
-  then
-    raise exception 'MULTI_PROFILE_NOT_ALLOWED'
-      using hint = 'L''offre Club est requise pour créer plusieurs profils.';
+  if auth.uid() is null then return new; end if;           -- service_role / triggers
+  if public.is_owner(auth.uid()) then return new; end if;  -- godpower
+  if new.is_owner is distinct from old.is_owner
+     or new.plan is distinct from old.plan then
+    raise exception 'Modification non autorisée des privilèges du compte';
   end if;
   return new;
 end;
 $$;
 
-create trigger cv_data_enforce_single_cv
-  before insert on public.cv_data
-  for each row execute function public.enforce_single_cv();
+create trigger profiles_guard_privileges
+  before update on public.profiles
+  for each row execute function public.guard_profile_privileges();
 
--- 3d. QUOTA : chaque UPDATE de cv_data initié par l'owner consomme 1 modification.
---     - service_role (webhooks, admin) : auth.uid() IS NULL -> bypass total
---     - modifications_left NULL        : illimité (Pro/Club) -> pas de décrément
---     - modifications_left = 0         : exception QUOTA_EXCEEDED, l'UPDATE échoue
---     Le décrément est atomique (même transaction que l'UPDATE) : pas de course
---     possible entre vérification et consommation.
-create or replace function public.consume_modification()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  remaining integer;
-  unlimited boolean;
-begin
-  -- Hors contexte utilisateur (service_role / SQL direct) : ne pas compter.
-  if auth.uid() is null or auth.uid() <> new.user_id then
-    return new;
-  end if;
-
-  select u.modifications_left is null, coalesce(u.modifications_left, 0)
-    into unlimited, remaining
-  from public.users u
-  where u.id = new.user_id
-  for update; -- verrouille la ligne : décrément concurrent impossible
-
-  if unlimited then
-    return new;
-  end if;
-
-  if remaining <= 0 then
-    raise exception 'QUOTA_EXCEEDED'
-      using hint = 'Aucune modification restante. Passez au plan Pro pour des modifications illimitées.';
-  end if;
-
-  update public.users
-  set modifications_left = remaining - 1
-  where id = new.user_id;
-
-  return new;
-end;
+-- updated_at auto sur les 3 tables
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
 $$;
 
-create trigger cv_data_consume_modification
-  before update on public.cv_data
-  for each row
-  when (old.* is distinct from new.*) -- un save sans changement ne consomme rien
-  execute function public.consume_modification();
+create trigger profiles_touch      before update on public.profiles
+  for each row execute function public.touch_updated_at();
+create trigger cvs_touch           before update on public.cvs
+  for each row execute function public.touch_updated_at();
+create trigger subscriptions_touch before update on public.subscriptions
+  for each row execute function public.touch_updated_at();
 
--- ----------------------------------------------------------------------------
--- 4. Row Level Security
--- ----------------------------------------------------------------------------
-alter table public.users   enable row level security;
-alter table public.cv_data enable row level security;
+-- ────────────────────────────────────────────────────────────────────────
+-- 5) RLS — activée partout, policies ultra-strictes (zéro fuite inter-comptes)
+-- ────────────────────────────────────────────────────────────────────────
+alter table public.profiles      enable row level security;
+alter table public.cvs           enable row level security;
+alter table public.subscriptions enable row level security;
 
--- ---- public.users ----
--- Lecture : uniquement sa propre ligne.
-create policy "users_select_own"
-  on public.users for select
-  to authenticated
-  using (id = (select auth.uid()));
+-- PROFILES : on ne lit/modifie que SOI (ou tout, si owner).
+create policy "profiles_select_self_or_owner" on public.profiles
+  for select using (auth.uid() = id or public.is_owner(auth.uid()));
+create policy "profiles_update_self_or_owner" on public.profiles
+  for update using (auth.uid() = id or public.is_owner(auth.uid()))
+              with check (auth.uid() = id or public.is_owner(auth.uid()));
+-- INSERT/DELETE volontairement absents : l'insert passe par le trigger (definer).
 
--- Aucune policy INSERT/UPDATE/DELETE pour authenticated :
---   - INSERT se fait via le trigger on_auth_user_created (security definer)
---   - plan / quota / entitlements ne sont modifiables que par service_role
---     (qui bypass RLS), donc un utilisateur ne peut PAS se ré-créditer
---     ni s'auto-attribuer la cinématique.
--- Ceinture + bretelles : on retire aussi le privilège UPDATE au niveau GRANT.
-revoke update, insert, delete on public.users from authenticated, anon;
-
--- ---- public.cv_data ----
--- Lecture : CV publics pour tout le monde (anon inclus), CV privés pour l'owner.
-create policy "cv_select_public_or_own"
-  on public.cv_data for select
-  to anon, authenticated
-  using (
+-- CVS : lecture publique seulement si visibility='public', sinon soi/owner.
+create policy "cvs_select_public_or_self_or_owner" on public.cvs
+  for select using (
     visibility = 'public'
-    or user_id = (select auth.uid())
+    or auth.uid() = user_id
+    or public.is_owner(auth.uid())
   );
+create policy "cvs_insert_self_or_owner" on public.cvs
+  for insert with check (auth.uid() = user_id or public.is_owner(auth.uid()));
+create policy "cvs_update_self_or_owner" on public.cvs
+  for update using (auth.uid() = user_id or public.is_owner(auth.uid()))
+              with check (auth.uid() = user_id or public.is_owner(auth.uid()));
+create policy "cvs_delete_self_or_owner" on public.cvs
+  for delete using (auth.uid() = user_id or public.is_owner(auth.uid()));
 
--- Création : uniquement pour soi-même (le trigger 3c limite à 1 CV hors Club).
-create policy "cv_insert_own"
-  on public.cv_data for insert
-  to authenticated
-  with check (user_id = (select auth.uid()));
+-- SUBSCRIPTIONS : lecture soi/owner ; écriture réservée au owner + service_role.
+-- (Le webhook Stripe écrira via service_role, qui contourne la RLS.)
+create policy "subscriptions_select_self_or_owner" on public.subscriptions
+  for select using (auth.uid() = user_id or public.is_owner(auth.uid()));
+create policy "subscriptions_owner_write" on public.subscriptions
+  for all using (public.is_owner(auth.uid()))
+          with check (public.is_owner(auth.uid()));
 
--- Modification : uniquement l'owner, sans pouvoir réassigner le CV à autrui.
--- Le trigger 3d consomme/contrôle le quota dans la même transaction.
-create policy "cv_update_own"
-  on public.cv_data for update
-  to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
-
--- Suppression : uniquement l'owner.
-create policy "cv_delete_own"
-  on public.cv_data for delete
-  to authenticated
-  using (user_id = (select auth.uid()));
-
--- ----------------------------------------------------------------------------
--- 5. Storage : buckets médias (avatars + fonds cinématiques)
--- ----------------------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true),
-       ('cinematics', 'cinematics', true)
-on conflict (id) do nothing;
-
--- Chaque user écrit uniquement dans son dossier {uid}/...
-create policy "storage_write_own_folder"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id in ('avatars', 'cinematics')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "storage_update_own_folder"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id in ('avatars', 'cinematics')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "storage_delete_own_folder"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id in ('avatars', 'cinematics')
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "storage_read_public"
-  on storage.objects for select
-  to anon, authenticated
-  using (bucket_id in ('avatars', 'cinematics'));
-
--- ----------------------------------------------------------------------------
--- 6. Helper paiement (appelé par le webhook via service_role uniquement)
---    Starter 79€  -> 3 modifications, pas de cinématique
---    Pro     149€ -> illimité + cinématique
---    Club         -> illimité + cinématique + multi-profils
--- ----------------------------------------------------------------------------
-create or replace function public.apply_plan(p_user_id uuid, p_plan text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if (select auth.uid()) is not null then
-    raise exception 'FORBIDDEN' using hint = 'apply_plan est réservé au service_role.';
-  end if;
-
-  update public.users
-  set plan                   = p_plan,
-      plan_name              = case p_plan
-                                 when 'starter' then 'Starter'
-                                 when 'pro'     then 'Pro'
-                                 when 'club'    then 'Club'
-                                 else plan_name
-                               end,
-      modifications_left     = case p_plan
-                                 when 'starter' then 3
-                                 else null            -- pro / club : illimité
-                               end,
-      entitlements_cinematic = p_plan in ('pro', 'club'),
-      entitlements_multi     = p_plan = 'club'
-  where id = p_user_id;
-
-  if not found then
-    raise exception 'USER_NOT_FOUND';
-  end if;
-end;
-$$;
-
-revoke execute on function public.apply_plan(uuid, text) from public, anon, authenticated;
+-- ────────────────────────────────────────────────────────────────────────
+-- 6) GRANTS explicites (la RLS reste la barrière de sécurité réelle)
+-- ────────────────────────────────────────────────────────────────────────
+grant usage on schema public to anon, authenticated;
+grant select                         on public.cvs           to anon;          -- profils publics
+grant select, insert, update, delete on public.cvs           to authenticated;
+grant select, update                 on public.profiles      to authenticated;
+grant select                         on public.subscriptions to authenticated;

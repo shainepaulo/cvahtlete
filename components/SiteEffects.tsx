@@ -39,19 +39,35 @@ export default function SiteEffects() {
     }
 
     // --- Reveal on scroll + compteurs ---------------------------------------
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in')
-            e.target.querySelectorAll<HTMLElement>('.count').forEach(animateCount)
-            io.unobserve(e.target)
-          }
-        })
-      },
-      { threshold: 0.14, rootMargin: '0px 0px -50px 0px' }
-    )
-    document.querySelectorAll<HTMLElement>('.reveal:not(.in)').forEach((el) => io.observe(el))
+    // Révèle un élément : pose .in (déclenche la transition CSS), lance les
+    // compteurs, cesse de l'observer.
+    const reveal = (el: Element) => {
+      if (el.classList.contains('in')) return
+      el.classList.add('in')
+      el.querySelectorAll<HTMLElement>('.count').forEach(animateCount)
+      io?.unobserve(el)
+    }
+
+    // Filet de sécurité « tourne de partout » : si IntersectionObserver est
+    // absent ou ne se déclenche pas (vieux mobiles, webviews, onglet en
+    // arrière-plan), le contenu ne doit JAMAIS rester invisible. On révèle
+    // tout ce qui entre dans le viewport — à l'init ET à chaque frame de scroll.
+    const revealVisible = () => {
+      const vh = window.innerHeight * 0.92
+      document.querySelectorAll<HTMLElement>('.reveal:not(.in)').forEach((el) => {
+        if (el.getBoundingClientRect().top < vh) reveal(el)
+      })
+    }
+
+    const io =
+      'IntersectionObserver' in window
+        ? new IntersectionObserver(
+            (entries) => entries.forEach((e) => { if (e.isIntersecting) reveal(e.target) }),
+            { threshold: 0.14, rootMargin: '0px 0px -50px 0px' }
+          )
+        : null
+    if (io) document.querySelectorAll<HTMLElement>('.reveal:not(.in)').forEach((el) => io.observe(el))
+    else document.querySelectorAll<HTMLElement>('.reveal').forEach(reveal)
 
     // --- Hero hors écran => toutes ses animations en pause (CSS .offstage) --
     const hero = document.querySelector<HTMLElement>('.hero')
@@ -92,6 +108,7 @@ export default function SiteEffects() {
           heroCont.style.transform = `translateY(${y * 0.28}px) scale(${1 - p * 0.06})`
           heroCont.style.opacity = String(1 - p * 1.05)
         }
+        revealVisible() // garantit l'apparition même si l'IO ne se déclenche pas
         ticking = false
       })
     }
@@ -121,7 +138,7 @@ export default function SiteEffects() {
 
     return () => {
       ac.abort() // retire TOUS les listeners d'un coup (l'ancienne version fuyait)
-      io.disconnect()
+      io?.disconnect()
       heroIo?.disconnect()
       bar.remove()
     }

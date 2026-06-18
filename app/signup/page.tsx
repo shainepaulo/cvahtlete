@@ -1,48 +1,38 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { signUp } from '@/app/actions/auth'
 
 const PW_RULES = [
   { key: 'length', label: '10+ caractères', test: (p: string) => p.length >= 10 },
   { key: 'lower', label: 'une minuscule', test: (p: string) => /[a-z]/.test(p) },
   { key: 'upper', label: 'une majuscule', test: (p: string) => /[A-Z]/.test(p) },
   { key: 'digit', label: 'un chiffre', test: (p: string) => /[0-9]/.test(p) },
-  { key: 'special', label: 'un caractère spécial', test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(p) },
+  { key: 'special', label: 'un caractère spécial', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
 ]
 
 function SignupForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next') || '/dashboard'
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
   const [loading, setLoading] = useState(false)
 
   const valid = PW_RULES.every((r) => r.test(password))
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError('')
+    setError(''); setOk('')
     if (!valid) { setError('Le mot de passe ne respecte pas toutes les règles.'); return }
     setLoading(true)
-    try {
-      const r = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      })
-      const j = await r.json()
-      if (!r.ok) { setError(j.error || 'Inscription impossible.'); setLoading(false); return }
-      router.push(next)
-    } catch {
-      setError('Inscription impossible.')
-      setLoading(false)
-    }
+    const res = await signUp(new FormData(e.currentTarget))
+    // Succès avec session => redirection automatique côté serveur.
+    if (res?.error) { setError(res.error); setLoading(false) }
+    else if (res?.ok) { setOk(res.ok); setLoading(false) }
   }
 
   return (
@@ -54,20 +44,23 @@ function SignupForm() {
           <p>Crée ton compte, choisis ton offre, construis ton répertoire.</p>
         </div>
         {error && <div className="alert err">{error}</div>}
+        {ok && <div className="alert ok">{ok}</div>}
         <form onSubmit={onSubmit}>
+          <input type="hidden" name="next" value={next} />
           <div className="field">
             <label htmlFor="name">Nom complet</label>
-            <input id="name" type="text" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />
+            <input id="name" name="name" type="text" autoComplete="name" required />
           </div>
           <div className="field">
             <label htmlFor="email">E-mail</label>
-            <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="email" name="email" type="email" autoComplete="email" required />
           </div>
           <div className="field">
             <label htmlFor="password">Mot de passe</label>
             <div className="pw-wrap">
               <input
-                id="password" type={showPw ? 'text' : 'password'}
+                id="password" name="password"
+                type={showPw ? 'text' : 'password'}
                 autoComplete="new-password" required
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />

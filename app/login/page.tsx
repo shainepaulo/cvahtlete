@@ -1,34 +1,25 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { signIn } from '@/app/actions/auth'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next') || '/dashboard'
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    try {
-      const r = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-      const j = await r.json()
-      if (!r.ok) { setError(j.error || 'Connexion impossible.'); setLoading(false); return }
-      router.push(next)
-    } catch {
-      setError('Connexion impossible.')
+    const res = await signIn(new FormData(e.currentTarget))
+    // En cas de succès la Server Action redirige (le code ci-dessous ne s'exécute pas).
+    if (res?.error) {
+      setError(res.error)
       setLoading(false)
     }
   }
@@ -43,20 +34,18 @@ function LoginForm() {
         </div>
         {error && <div className="alert err">{error}</div>}
         <form onSubmit={onSubmit}>
+          <input type="hidden" name="next" value={next} />
           <div className="field">
             <label htmlFor="email">E-mail</label>
-            <input
-              id="email" type="email" autoComplete="email" required
-              value={email} onChange={(e) => setEmail(e.target.value)}
-            />
+            <input id="email" name="email" type="email" autoComplete="email" required />
           </div>
           <div className="field">
             <label htmlFor="password">Mot de passe</label>
             <div className="pw-wrap">
               <input
-                id="password" type={showPw ? 'text' : 'password'}
+                id="password" name="password"
+                type={showPw ? 'text' : 'password'}
                 autoComplete="current-password" required
-                value={password} onChange={(e) => setPassword(e.target.value)}
               />
               <button type="button" className="pw-toggle" onClick={() => setShowPw((s) => !s)}>
                 {showPw ? 'Cacher' : 'Voir'}

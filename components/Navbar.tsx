@@ -5,36 +5,24 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Logo from './Logo'
 
-interface User {
-  name?: string
-  plan?: string | null
-}
+export type NavUser = { email: string; isOwner: boolean; hasPlan: boolean } | null
 
 const PAGES = [
   { href: '/', label: 'Accueil' },
   { href: '/exemples', label: 'Exemples' },
-  { href: '/bibliotheque', label: 'Bibliothèque' },
   { href: '/sports', label: 'Tous les sports' },
   { href: '/tarifs', label: 'Tarifs' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ user }: { user: NavUser }) {
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/me')
-      .then((r) => r.json())
-      .then((j) => setUser(j.user || null))
-      .catch(() => {})
   }, [])
 
   const isActive = (href: string) =>
@@ -78,11 +66,11 @@ export default function Navbar() {
                   Mon compte
                 </Link>
                 <Link
-                  href={user.plan ? '/builder' : '/tarifs'}
+                  href={user.hasPlan ? '/builder' : '/tarifs'}
                   className="btn btn-primary"
                   onClick={() => setOpen(false)}
                 >
-                  {user.plan ? 'Mon répertoire' : 'Choisir une offre'}
+                  {user.hasPlan ? 'Mon répertoire' : 'Choisir une offre'}
                 </Link>
               </>
             ) : (

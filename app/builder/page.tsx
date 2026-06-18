@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { getMyProfile } from '@/app/actions/auth'
+
+const PLAN_LABEL: Record<string, string> = {
+  free: 'Aucune offre', starter: 'Starter', pro: 'Pro', club: 'Club',
+}
 
 const SPORTS: Record<string, { emoji: string; a: string; b: string }> = {
   Football:   { emoji: '⚽', a: '#c6f932', b: '#5cf0c0' },
@@ -228,42 +233,22 @@ function BuilderContent() {
     return () => window.removeEventListener('message', onMsg)
   }, [])
 
-  // Load user + cv
+  // Auth & droits : lus côté serveur (cookies httpOnly). Le middleware garantit
+  // déjà qu'on est connecté ici ; un free sans offre est renvoyé vers /tarifs.
   useEffect(() => {
-    async function load() {
-      const rUser = await fetch('/api/me').then((r) => r.json())
-      if (!rUser.user) { router.push('/login?next=/builder'); return }
-      if (!rUser.user.plan) { router.push('/tarifs'); return }
-      setUser(rUser.user)
-
-      const rCv = await fetch('/api/me/cv').then((r) => r.json()).catch(() => ({}))
-      const cv: CvData = rCv.cv || {}
-      if (cv.first) setFirst(cv.first)
-      if (cv.last) setLast(cv.last)
-      if (cv.sport) setSport(cv.sport)
-      if (cv.discipline) setDiscipline(cv.discipline)
-      if (cv.tagline) setTagline(cv.tagline)
-      if (cv.location) setLocation(cv.location)
-      if (cv.colors?.a) setColorA(cv.colors.a)
-      if (cv.colors?.b) setColorB(cv.colors.b)
-      if (cv.avatar) setAvatar(cv.avatar)
-      if (cv.photoPosX != null) setPhotoPosX(cv.photoPosX)
-      if (cv.photoPosY != null) setPhotoPosY(cv.photoPosY)
-      if (cv.cropZoomAvatar != null) setCropZoomAvatar(cv.cropZoomAvatar)
-      if (cv.cineBg) setCineBg(cv.cineBg)
-      if (cv.cineBgPosX != null) setCineBgPosX(cv.cineBgPosX)
-      if (cv.cineBgPosY != null) setCineBgPosY(cv.cineBgPosY)
-      if (cv.cropZoomCineBg != null) setCropZoomCineBg(cv.cropZoomCineBg)
-      if (cv.stats?.length) setStats(cv.stats)
-      if (cv.palmares?.length) setPalmares(cv.palmares)
-      if (cv.career?.length) setCareer(cv.career)
-      if (cv.visibility) setVisibility(cv.visibility)
-      const ig = cv.links?.find((l) => l.icon === 'instagram')
-      const xL = cv.links?.find((l) => l.icon === 'x')
-      if (ig?.url) setInstagram(ig.url)
-      if (xL?.url) setXUrl(xL.url)
-    }
-    load()
+    getMyProfile().then((p) => {
+      if (!p) { router.push('/login?next=/builder'); return }
+      if (p.plan === 'free' && !p.isOwner) { router.push('/tarifs'); return }
+      setUser({
+        plan: p.plan,
+        planName: PLAN_LABEL[p.plan],
+        modificationsLeft: p.isOwner ? -1 : 0,
+        entitlements: { cinematic: p.cinematic },
+        cv: null,
+      })
+    })
+    // Le pré-remplissage du CV existant sera branché sur la table `cvs`
+    // à l'incrément suivant (CV CRUD + Supabase Storage pour les images).
   }, [router])
 
   async function save() {
@@ -271,30 +256,12 @@ function BuilderContent() {
       setAlertMsg({ msg: 'Renseigne au moins ton prénom et ton nom.', ok: false })
       return
     }
-    setSaving(true)
-    setAlertMsg(null)
-    try {
-      const r = await fetch('/api/me/cv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv: buildCv(), visibility }),
-      })
-      const j = await r.json()
-      if (!r.ok) {
-        setAlertMsg({ msg: j.error || 'Enregistrement impossible.', ok: false })
-        setSaving(false)
-        return
-      }
-      const left = j.modificationsLeft === -1 ? 'illimitées' : j.modificationsLeft + ' restantes'
-      const visTxt = j.cv?.visibility === 'public' ? '🌐 Public — visible dans la bibliothèque' : '🔒 Privé — accessible uniquement via ton lien'
-      const link = window.location.origin + '/profil?u=' + (j.cv?.slug || '')
-      setAlertMsg({ msg: `CV enregistré ✓ — modifications ${left}. ${visTxt}`, ok: true, link, slug: j.cv?.slug })
-      if (user) setUser((u) => u ? { ...u, modificationsLeft: j.modificationsLeft } : u)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch {
-      setAlertMsg({ msg: 'Enregistrement impossible.', ok: false })
-    }
-    setSaving(false)
+    // CV CRUD branché à l'incrément suivant (Server Action sur la table `cvs`).
+    setAlertMsg({
+      msg: "Compte & accès opérationnels ✓ — l'enregistrement du CV (table cvs + upload d'images) arrive à l'incrément suivant.",
+      ok: true,
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   if (!user) {

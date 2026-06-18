@@ -10,7 +10,7 @@ interface CvCareer { year: string; club: string; detail?: string }
 interface CvLink { label: string; icon: string; url: string }
 interface CvData {
   first: string; last: string; sport: string; emoji?: string; discipline?: string
-  tagline?: string; location?: string; verified?: boolean
+  tagline?: string; bio?: string; location?: string; verified?: boolean
   colors: { a: string; b: string }
   avatar?: string; photoPosX?: number; photoPosY?: number; cropZoomAvatar?: number
   stats?: CvStat[]; palmares?: CvTrophy[]; career?: CvCareer[]; links?: CvLink[]
@@ -257,6 +257,13 @@ function ProfilContent() {
             ))}
           </div>
         </article>
+
+        {cv.bio && (
+          <section className="p-block">
+            <h2 className="p-block-title">À propos</h2>
+            <p className="p-bio reveal">{cv.bio}</p>
+          </section>
+        )}
 
         {(cv.stats || []).length > 0 && (
           <section className="p-block">
