@@ -4,35 +4,29 @@ import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getMyProfile } from '@/app/actions/auth'
+import { getMyCv, upsertCv } from '@/app/actions/cv'
+import { uploadImage } from '@/app/actions/upload'
 
 const PLAN_LABEL: Record<string, string> = {
   free: 'Aucune offre', starter: 'Starter', pro: 'Pro', club: 'Club',
 }
 
 const SPORTS: Record<string, { emoji: string; a: string; b: string }> = {
-  Football:   { emoji: '⚽', a: '#c6f932', b: '#5cf0c0' },
-  Basketball: { emoji: '🏀', a: '#ff7a45', b: '#ffb347' },
-  Tennis:     { emoji: '🎾', a: '#ff9f45', b: '#ffd23f' },
-  Volley:     { emoji: '🏐', a: '#38d8ff', b: '#7c5cff' },
+  Football:     { emoji: '⚽', a: '#c6f932', b: '#5cf0c0' },
+  Basketball:   { emoji: '🏀', a: '#ff7a45', b: '#ffb347' },
+  Tennis:       { emoji: '🎾', a: '#ff9f45', b: '#ffd23f' },
+  Volley:       { emoji: '🏐', a: '#38d8ff', b: '#7c5cff' },
   'Athlétisme': { emoji: '⚡', a: '#ffd23f', b: '#34d399' },
-  Rugby:      { emoji: '🏉', a: '#8b5cff', b: '#38d8ff' },
-  Autre:      { emoji: '🏅', a: '#b08d57', b: '#d8b87a' },
+  Rugby:        { emoji: '🏉', a: '#8b5cff', b: '#38d8ff' },
+  Autre:        { emoji: '🏅', a: '#b08d57', b: '#d8b87a' },
 }
 
 interface Row { [k: string]: string }
-interface CvData {
-  first?: string; last?: string; sport?: string; emoji?: string
-  discipline?: string; tagline?: string; location?: string
-  avatar?: string; photoPosX?: number; photoPosY?: number; cropZoomAvatar?: number
-  cineBg?: string; cineBgPosX?: number; cineBgPosY?: number; cropZoomCineBg?: number
-  colors?: { a: string; b: string }; verified?: boolean
-  stats?: Row[]; palmares?: Row[]; career?: Row[]
-  links?: { label: string; icon: string; url: string }[]
-  visibility?: string; slug?: string
-}
 interface User {
-  plan?: string | null; planName?: string; modificationsLeft?: number
-  entitlements?: { cinematic?: boolean }; cv?: { slug?: string } | null
+  plan?: string | null; planName?: string
+  modificationsLeft?: number
+  entitlements?: { cinematic?: boolean }
+  cv?: { slug?: string } | null
 }
 
 const ROWDEF: Record<string, [string, string][]> = {
@@ -50,11 +44,10 @@ type RowSection = 'stats' | 'palmares' | 'career'
 
 function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[]; onChange: (rows: Row[]) => void }) {
   function update(i: number, k: string, v: string) {
-    const next = rows.map((r, j) => j === i ? { ...r, [k]: v } : r)
-    onChange(next)
+    onChange(rows.map((r, j) => j === i ? { ...r, [k]: v } : r))
   }
   function remove(i: number) { onChange(rows.filter((_, j) => j !== i)) }
-  function add() { const empty: Row = {}; ROWDEF[kind].forEach(([k]) => empty[k] = ''); onChange([...rows, empty]) }
+  function add() { const e: Row = {}; ROWDEF[kind].forEach(([k]) => e[k] = ''); onChange([...rows, e]) }
 
   return (
     <>
@@ -62,11 +55,7 @@ function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[]; onCh
         {rows.map((row, i) => (
           <div key={i} className="stat-row">
             {ROWDEF[kind].map(([k, ph]) => (
-              <input
-                key={k}
-                className="mini"
-                placeholder={ph}
-                value={row[k] || ''}
+              <input key={k} className="mini" placeholder={ph} value={row[k] || ''}
                 onChange={(e) => update(i, k, e.target.value)}
                 style={k === 'icon' || k === 'unit' || k === 'count' ? { maxWidth: 90 } : undefined}
               />
@@ -83,10 +72,10 @@ function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[]; onCh
 }
 
 function CropBox({
-  id, label, hint, src, posX, posY, zoom, circle,
+  label, hint, src, posX, posY, zoom, circle,
   onPosChange, onZoomChange, onFile,
 }: {
-  id: string; label: string; hint: string
+  label: string; hint: string
   src: string; posX: number; posY: number; zoom: number; circle?: boolean
   onPosChange: (x: number, y: number) => void
   onZoomChange: (z: number) => void
@@ -96,18 +85,16 @@ function CropBox({
   const boxRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; sx: number; sy: number } | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
-    setUploading(true)
-    try {
-      const fd = new FormData(); fd.append('image', file)
-      const r = await fetch('/api/upload', { method: 'POST', body: fd })
-      const j = await r.json()
-      if (!r.ok) throw new Error(j.error)
-      onFile(j.url)
-    } catch {}
+    setUploading(true); setUploadErr('')
+    const fd = new FormData(); fd.append('image', file)
+    const result = await uploadImage(fd)
     setUploading(false)
+    if ('error' in result) { setUploadErr(result.error); return }
+    onFile(result.url)
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -123,11 +110,7 @@ function CropBox({
     const vy = Math.max(0, Math.min(100, Math.round(drag.current.sy - dy / boxRef.current.offsetHeight * 250)))
     onPosChange(vx, vy)
   }
-  function onPointerUp() {
-    drag.current = null
-    boxRef.current?.classList.remove('dragging')
-  }
-
+  function onPointerUp() { drag.current = null; boxRef.current?.classList.remove('dragging') }
   function adjustZoom(d: number) {
     onZoomChange(Math.max(1.0, Math.min(2.0, parseFloat((zoom + d).toFixed(2)))))
   }
@@ -136,9 +119,7 @@ function CropBox({
     <div className="field">
       <label>{label}</label>
       <input ref={fileRef} type="file" accept="image/*" className="file-input" onChange={handleFile} />
-      <div
-        ref={boxRef}
-        className={`crop-box${circle ? ' circle' : ' wide'}`}
+      <div ref={boxRef} className={`crop-box${circle ? ' circle' : ' wide'}`}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove}
         onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
       >
@@ -151,12 +132,13 @@ function CropBox({
         )}
         {!uploading && !src && <div className="ph">{hint}</div>}
       </div>
+      {uploadErr && <p style={{ color: 'var(--error, #ff6b6b)', fontSize: '.8rem', marginTop: 4 }}>{uploadErr}</p>}
       <div className="crop-zoom-ctrl">
         <button type="button" className="crop-zoom-btn" onClick={() => adjustZoom(-0.1)}>−</button>
         <span className="crop-zoom-val">{zoom.toFixed(2)}×</span>
         <button type="button" className="crop-zoom-btn" onClick={() => adjustZoom(0.1)}>+</button>
       </div>
-      <div className="crop-hint">✛ Glisse l&apos;image pour viser le visage</div>
+      <div className="crop-hint">✛ Glisse l&apos;image pour cadrer</div>
     </div>
   )
 }
@@ -172,11 +154,11 @@ function BuilderContent() {
   const [previewReady, setPreviewReady] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Form state
   const [first, setFirst] = useState('')
   const [last, setLast] = useState('')
   const [sport, setSport] = useState('Football')
   const [discipline, setDiscipline] = useState('')
+  const [bio, setBio] = useState('')
   const [tagline, setTagline] = useState('')
   const [location, setLocation] = useState('')
   const [colorA, setColorA] = useState('#c6f932')
@@ -196,11 +178,11 @@ function BuilderContent() {
   const [palmares, setPalmares] = useState<Row[]>([{ icon: '🏆', name: '', count: '' }])
   const [career, setCareer] = useState<Row[]>([{ year: '', club: '', detail: '' }])
 
-  function buildCv(): CvData {
+  function buildMsg() {
     return {
       first, last, sport,
       emoji: SPORTS[sport]?.emoji || '🏅',
-      discipline, tagline, location,
+      discipline, tagline, bio, location,
       avatar: avatar || undefined,
       photoPosX, photoPosY, cropZoomAvatar,
       cineBg: cineBg || undefined,
@@ -213,15 +195,18 @@ function BuilderContent() {
       links: [
         instagram && { label: 'Instagram', icon: 'instagram', url: instagram },
         xUrl && { label: 'X', icon: 'x', url: xUrl },
-      ].filter(Boolean) as CvData['links'],
+      ].filter(Boolean),
+      visibility, slug: user?.cv?.slug,
     }
   }
 
   const syncPreview = useCallback(() => {
     if (!previewReady || !iframeRef.current?.contentWindow) return
-    iframeRef.current.contentWindow.postMessage({ type: 'acv-cv', cv: buildCv() }, '*')
+    iframeRef.current.contentWindow.postMessage({ type: 'acv-cv', cv: buildMsg() }, '*')
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewReady, first, last, sport, discipline, tagline, location, colorA, colorB, avatar, photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg, stats, palmares, career])
+  }, [previewReady, first, last, sport, discipline, bio, tagline, location, colorA, colorB,
+      avatar, photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
+      stats, palmares, career, instagram, xUrl, visibility])
 
   useEffect(() => { syncPreview() }, [syncPreview])
 
@@ -233,22 +218,46 @@ function BuilderContent() {
     return () => window.removeEventListener('message', onMsg)
   }, [])
 
-  // Auth & droits : lus côté serveur (cookies httpOnly). Le middleware garantit
-  // déjà qu'on est connecté ici ; un free sans offre est renvoyé vers /tarifs.
+  // Auth + pré-remplissage depuis la DB
   useEffect(() => {
     getMyProfile().then((p) => {
       if (!p) { router.push('/login?next=/builder'); return }
       if (p.plan === 'free' && !p.isOwner) { router.push('/tarifs'); return }
       setUser({
-        plan: p.plan,
-        planName: PLAN_LABEL[p.plan],
+        plan: p.plan, planName: PLAN_LABEL[p.plan],
         modificationsLeft: p.isOwner ? -1 : 0,
         entitlements: { cinematic: p.cinematic },
         cv: null,
       })
     })
-    // Le pré-remplissage du CV existant sera branché sur la table `cvs`
-    // à l'incrément suivant (CV CRUD + Supabase Storage pour les images).
+    getMyCv().then((cv) => {
+      if (!cv) return
+      setUser((u) => u ? { ...u, cv: { slug: cv.slug } } : u)
+      setFirst(cv.first || '')
+      setLast(cv.last || '')
+      setSport(cv.sport || 'Football')
+      setDiscipline(cv.discipline || '')
+      setBio(cv.bio || '')
+      setTagline(cv.tagline || '')
+      setLocation(cv.location || '')
+      setColorA(cv.colors?.a || SPORTS[cv.sport]?.a || '#c6f932')
+      setColorB(cv.colors?.b || SPORTS[cv.sport]?.b || '#5cf0c0')
+      setAvatar(cv.avatar || '')
+      setPhotoPosX(cv.photoPosX ?? 50)
+      setPhotoPosY(cv.photoPosY ?? 50)
+      setCropZoomAvatar(cv.cropZoomAvatar ?? 1.4)
+      setCineBg(cv.cineBg || '')
+      setCineBgPosX(cv.cineBgPosX ?? 50)
+      setCineBgPosY(cv.cineBgPosY ?? 50)
+      setCropZoomCineBg(cv.cropZoomCineBg ?? 1.25)
+      if ((cv.stats as Row[])?.length) setStats(cv.stats as Row[])
+      if ((cv.palmares as Row[])?.length) setPalmares(cv.palmares as Row[])
+      if ((cv.career as Row[])?.length) setCareer(cv.career as Row[])
+      const lks = (cv.links as Array<{ label: string; icon: string; url: string }> | undefined) ?? []
+      setInstagram(lks.find((l) => l.icon === 'instagram')?.url || '')
+      setXUrl(lks.find((l) => l.icon === 'x')?.url || '')
+      setVisibility(cv.visibility || 'private')
+    })
   }, [router])
 
   async function save() {
@@ -256,11 +265,28 @@ function BuilderContent() {
       setAlertMsg({ msg: 'Renseigne au moins ton prénom et ton nom.', ok: false })
       return
     }
-    // CV CRUD branché à l'incrément suivant (Server Action sur la table `cvs`).
-    setAlertMsg({
-      msg: "Compte & accès opérationnels ✓ — l'enregistrement du CV (table cvs + upload d'images) arrive à l'incrément suivant.",
-      ok: true,
+    setSaving(true)
+    const result = await upsertCv({
+      first, last, sport, discipline: discipline || undefined,
+      tagline: tagline || undefined, bio: bio || undefined, location: location || undefined,
+      colors: { a: colorA, b: colorB },
+      avatar: avatar || undefined, photoPosX, photoPosY, cropZoomAvatar,
+      cineBg: cineBg || undefined, cineBgPosX, cineBgPosY, cropZoomCineBg,
+      stats: stats.filter((r) => Object.values(r).some((v) => v?.trim())),
+      palmares: palmares.filter((r) => Object.values(r).some((v) => v?.trim())),
+      career: career.filter((r) => Object.values(r).some((v) => v?.trim())),
+      links: [
+        instagram && { label: 'Instagram', icon: 'instagram', url: instagram },
+        xUrl && { label: 'X', icon: 'x', url: xUrl },
+      ].filter(Boolean) as unknown[],
+      visibility: visibility as 'private' | 'public',
     })
+    setSaving(false)
+    if (result.error) { setAlertMsg({ msg: result.error, ok: false }); return }
+    const slug = result.slug!
+    const link = `${window.location.origin}/${slug}`
+    setUser((u) => u ? { ...u, cv: { slug } } : u)
+    setAlertMsg({ msg: 'Répertoire enregistré !', ok: true, link, slug })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -275,8 +301,7 @@ function BuilderContent() {
   function onSportChange(s: string) {
     setSport(s)
     const def = SPORTS[s] || SPORTS.Autre
-    setColorA(def.a)
-    setColorB(def.b)
+    setColorA(def.a); setColorB(def.b)
   }
 
   return (
@@ -288,18 +313,15 @@ function BuilderContent() {
           <p>{user.planName || ''} · <strong>{modsTxt}</strong></p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 4, padding: '12px 14px', fontFamily: 'var(--font-body)' }}
-          >
+          <select value={visibility} onChange={(e) => setVisibility(e.target.value)}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 4, padding: '12px 14px', fontFamily: 'var(--font-body)' }}>
             <option value="private">🔒 Privé (lien seulement)</option>
             <option value="public">🌐 Public (visible en recherche)</option>
           </select>
           {hasCine && cvSlug && (
             <Link className="btn btn-ghost" href={`/cine?u=${cvSlug}`} target="_blank">🎬 Cinématique</Link>
           )}
-          <Link className="btn btn-ghost" href="/profil?me=1" target="_blank">Voir ma page ↗</Link>
+          <Link className="btn btn-ghost" href={cvSlug ? `/${cvSlug}` : '/profil?me=1'} target="_blank">Voir ma page ↗</Link>
           <button className="btn btn-primary" onClick={save} disabled={saving}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
@@ -326,12 +348,7 @@ function BuilderContent() {
                 Copier
               </button>
               {hasCine && alertMsg.slug && (
-                <>
-                  {' · '}
-                  <a href={`/cine?u=${alertMsg.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                    🎬 Mode cinématique
-                  </a>
-                </>
+                <>{' · '}<a href={`/cine?u=${alertMsg.slug}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>🎬 Cinématique</a></>
               )}
             </>
           )}
@@ -363,17 +380,20 @@ function BuilderContent() {
               <label>Accroche</label>
               <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Une phrase qui te définit" />
             </div>
+            <div className="field">
+              <label>Biographie</label>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Quelques lignes sur ton parcours, ta vision…"
+                rows={4} style={{ width: '100%', resize: 'vertical', background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '10px 12px', fontFamily: 'var(--font-body)', fontSize: '.9rem' }} />
+            </div>
             <div className="row2">
               <div className="field">
                 <label>Localisation</label>
                 <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Paris, France" />
               </div>
-              <CropBox
-                id="avatar" label="Photo de profil" hint="Aucune photo" circle
+              <CropBox label="Photo de profil" hint="Aucune photo" circle
                 src={avatar} posX={photoPosX} posY={photoPosY} zoom={cropZoomAvatar}
                 onPosChange={(x, y) => { setPhotoPosX(x); setPhotoPosY(y) }}
-                onZoomChange={setCropZoomAvatar}
-                onFile={setAvatar}
+                onZoomChange={setCropZoomAvatar} onFile={setAvatar}
               />
             </div>
             <div className="row2">
@@ -419,7 +439,7 @@ function BuilderContent() {
             </div>
           </div>
 
-          {/* Cinématique (Pro only) */}
+          {/* Cinématique (Pro/Club) */}
           {hasCine && (
             <div className="app-card" style={{ padding: 30, marginTop: 18, borderColor: 'rgba(139,182,255,0.4)' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', marginBottom: 6 }}>
@@ -429,12 +449,10 @@ function BuilderContent() {
               <p style={{ color: 'var(--muted)', fontSize: '.86rem', marginBottom: 16 }}>
                 Personnalise ton écran immersif. Laisse vide pour réutiliser ta photo de profil.
               </p>
-              <CropBox
-                id="cineBg" label="Image de fond plein écran" hint="Réutilise la photo de profil si vide"
+              <CropBox label="Image de fond plein écran" hint="Réutilise la photo de profil si vide"
                 src={cineBg} posX={cineBgPosX} posY={cineBgPosY} zoom={cropZoomCineBg}
                 onPosChange={(x, y) => { setCineBgPosX(x); setCineBgPosY(y) }}
-                onZoomChange={setCropZoomCineBg}
-                onFile={setCineBg}
+                onZoomChange={setCropZoomCineBg} onFile={setCineBg}
               />
               {cvSlug ? (
                 <Link className="btn btn-ghost" href={`/cine?u=${cvSlug}`} target="_blank" style={{ marginTop: 4 }}>
@@ -454,8 +472,10 @@ function BuilderContent() {
           <div className="pb-head">
             <span>Aperçu en direct</span>
             <div className="pb-sizes">
-              <button type="button" onClick={(e) => { if (iframeRef.current) iframeRef.current.style.width = '390px'; document.querySelectorAll('.pb-sizes button').forEach((b) => b.classList.toggle('active', b === e.currentTarget)) }} className="active" title="Vue mobile">📱</button>
-              <button type="button" onClick={(e) => { if (iframeRef.current) iframeRef.current.style.width = '100%'; document.querySelectorAll('.pb-sizes button').forEach((b) => b.classList.toggle('active', b === e.currentTarget)) }} title="Vue large">🖥️</button>
+              <button type="button" className="active" title="Vue mobile"
+                onClick={(e) => { if (iframeRef.current) iframeRef.current.style.width = '390px'; document.querySelectorAll('.pb-sizes button').forEach((b) => b.classList.toggle('active', b === e.currentTarget)) }}>📱</button>
+              <button type="button" title="Vue large"
+                onClick={(e) => { if (iframeRef.current) iframeRef.current.style.width = '100%'; document.querySelectorAll('.pb-sizes button').forEach((b) => b.classList.toggle('active', b === e.currentTarget)) }}>🖥️</button>
             </div>
           </div>
           <div className="pb-frame">
