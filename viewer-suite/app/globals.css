@@ -1,0 +1,359 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   VIEWER SUITE — Design System repris d'ATHLETE CV
+   Dark navy palette + pastel accents + custom animations
+   ============================================================ */
+
+:root {
+  --bg: #002451;
+  --bg-2: #001a3b;
+  --surface: #08316a;
+  --surface-2: #0d3d7d;
+  --border: rgba(187, 218, 255, 0.14);
+  --border-2: rgba(187, 218, 255, 0.28);
+  --text: #eef3ff;
+  --muted: #8b9fcc;
+  --muted-2: #62769f;
+  --gold: #ffd98a;
+  --gold-2: #ffe9a8;
+  --red: #ff9da4;
+  --accent: #8bb6ff;
+  --accent-2: #79e0cf;
+  --grad: linear-gradient(120deg, #8bb6ff, #79e0cf);
+  --radius-xl: 14px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --max: 1140px;
+  --nav-h: 78px;
+  /* next/font (layout.tsx) fournit les vraies familles via --font-sora/--font-jost.
+     Sans elles, 'Sora' nu ne matchait aucune fonte chargée → fallback système
+     (d'où le « Noa » qui ne ressemblait pas au nom de famille). */
+  --font-display: var(--font-sora), 'Sora', system-ui, sans-serif;
+  --font-body: var(--font-jost), 'Jost', 'Montserrat', system-ui, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Halos d'ambiance statiques (rendu une fois, coût GPU nul ensuite) */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(130px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  width: 540px; height: 540px;
+  top: -180px; right: -120px;
+  background: radial-gradient(circle, rgba(139,182,255,0.22), transparent 70%);
+}
+body::after {
+  width: 480px; height: 480px;
+  bottom: -200px; left: -150px;
+  background: radial-gradient(circle, rgba(121,224,207,0.16), transparent 70%);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 32px;
+  position: relative;
+  z-index: 1;
+}
+a { color: inherit; }
+
+/* ===================== BUTTONS ===================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font-family: var(--font-body); font-weight: 500; font-size: 0.8rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 15px 30px; border-radius: 2px; text-decoration: none; cursor: pointer;
+  border: 1px solid transparent; white-space: nowrap;
+  transition: transform 0.25s, box-shadow 0.3s, background 0.25s, color 0.25s, border-color 0.25s;
+}
+.btn-primary { background: var(--grad); color: #002451; position: relative; overflow: hidden; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(139,182,255,0.3); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--border-2); }
+.btn-ghost:hover { transform: translateY(-2px); border-color: var(--gold); color: var(--gold); }
+
+/* ===================== TOGGLE DE MODE ===================== */
+.mode-switch {
+  position: fixed; top: 18px; right: 18px; z-index: 400;
+  display: flex; gap: 4px; padding: 4px; border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,18,38,0.72); backdrop-filter: blur(14px);
+}
+.mode-switch button {
+  border-radius: 100px; border: none; padding: 9px 18px;
+  font-family: var(--font-body); font-size: 0.72rem;
+  letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
+  background: transparent; color: var(--muted); font-weight: 400;
+  transition: background 0.25s, color 0.25s;
+}
+.mode-switch button.on { background: var(--grad); color: #002451; font-weight: 600; }
+@media (max-width: 480px) {
+  .mode-switch { top: 12px; right: 12px; }
+  .mode-switch button { padding: 8px 12px; font-size: 0.62rem; letter-spacing: 0.06em; }
+}
+
+/* ===================== REVEAL ===================== */
+.reveal {
+  opacity: 0; transform: translateY(34px) scale(0.97);
+  transition: opacity 0.8s cubic-bezier(.22,.61,.36,1), transform 0.8s cubic-bezier(.22,.61,.36,1);
+}
+.reveal.in { opacity: 1; transform: none; }
+.reveal[data-dir="left"] { transform: translateX(-44px); }
+.reveal[data-dir="right"] { transform: translateX(44px); }
+.reveal[data-dir="left"].in, .reveal[data-dir="right"].in { transform: none; }
+.reveal[data-delay="1"] { transition-delay: 0.08s; }
+.reveal[data-delay="2"] { transition-delay: 0.16s; }
+.reveal[data-delay="3"] { transition-delay: 0.24s; }
+.count.counting { color: var(--gold); }
+
+/* ===================== PROFIL (mode classique) ===================== */
+.profile-wrap { max-width: 760px; margin: 0 auto; padding: 36px 22px 80px; position: relative; z-index: 1; }
+.p-hero { position: relative; border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--border); background: var(--surface); text-align: center; padding: 0 32px 38px; }
+.p-cover { height: 150px; background: linear-gradient(120deg, var(--a, #8bb6ff), var(--b, #79e0cf)); position: relative; }
+.p-cover::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.25), transparent 55%); }
+.p-cover .sport-emoji { position: absolute; right: 22px; bottom: 16px; font-size: 2.4rem; filter: drop-shadow(0 4px 10px rgba(0,0,0,.3)); }
+.p-avatar { width: 128px; height: 128px; border-radius: 50%; margin: -64px auto 0; border: 5px solid var(--surface); background: var(--surface-2); overflow: hidden; position: relative; display: grid; place-items: center; }
+.p-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; }
+.p-avatar .initials { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; background: linear-gradient(120deg, var(--a, #8bb6ff), var(--b, #79e0cf)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.p-name { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.7rem, 6vw, 2.4rem); letter-spacing: -0.02em; margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; }
+.p-verified { width: 22px; height: 22px; color: var(--a, #8bb6ff); }
+.p-tagline { color: var(--muted); margin-top: 8px; font-size: 1.02rem; }
+.p-bio { color: var(--muted); font-weight: 300; line-height: 1.75; font-size: 1.02rem; }
+.p-chips { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; margin-top: 20px; }
+.p-chip { font-size: 0.84rem; padding: 7px 15px; border-radius: 100px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+.p-actions { display: flex; gap: 12px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+.p-actions .btn { padding: 13px 24px; }
+.p-actions .btn-share { background: linear-gradient(120deg, var(--a, #8bb6ff), var(--b, #79e0cf)); color: #08090c; }
+.p-actions .btn-share:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.p-block { margin-top: 34px; }
+.p-block-title { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.p-block-title::before { content: ''; width: 18px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--a, #8bb6ff), var(--b, #79e0cf)); }
+.p-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.p-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; transition: transform .25s, border-color .25s; }
+.p-stat:hover { transform: translateY(-3px); border-color: var(--border-2); }
+.p-stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1; }
+.p-stat .v .u { font-size: 0.9rem; color: var(--muted); font-weight: 600; margin-left: 3px; }
+.p-stat .l { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+.p-palmares { display: flex; flex-direction: column; gap: 10px; }
+.p-trophy { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 18px; }
+.p-trophy .ti { font-size: 1.4rem; }
+.p-trophy .tn { font-weight: 600; flex: 1; }
+.p-trophy .tc { font-family: var(--font-display); font-weight: 800; color: transparent; background: linear-gradient(120deg, var(--a, #8bb6ff), var(--b, #79e0cf)); -webkit-background-clip: text; background-clip: text; }
+.p-timeline { position: relative; padding-left: 26px; }
+.p-timeline::before { content: ''; position: absolute; left: 7px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(var(--a, #8bb6ff), var(--b, #79e0cf)); opacity: .5; }
+.p-event { position: relative; padding: 0 0 22px; }
+.p-event::before { content: ''; position: absolute; left: -26px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(120deg, var(--a, #8bb6ff), var(--b, #79e0cf)); box-shadow: 0 0 0 4px var(--bg); }
+.p-event .y { font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; color: var(--muted); }
+.p-event .t { font-weight: 600; margin-top: 2px; }
+.p-event .d { color: var(--muted-2); font-size: 0.86rem; }
+.p-loading, .p-error { text-align: center; padding: 120px 20px; color: var(--muted); }
+.toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); font-weight: 600; font-size: 0.9rem; padding: 12px 22px; border-radius: 100px; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; z-index: 500; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===================== CINÉMATIQUE ===================== */
+.cine-wrap { position: fixed; inset: 0; color: #fff; font-family: var(--font-body); background: #001226; z-index: 300; }
+.ci-bg { position: absolute; inset: 0; z-index: 0; background: #001226; display: block; width: 100%; height: 100%; }
+.ci-bg img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.92) contrast(1.08); }
+.ci-scrim {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(0deg, rgba(0,12,28,0.95) 0%, rgba(0,12,28,0.55) 32%, rgba(0,12,28,0.05) 62%, transparent 100%),
+    radial-gradient(ellipse 130% 90% at 50% 100%, rgba(0,0,0,0.55) 0%, transparent 60%);
+}
+/* Fondu noir entre les photos de la galerie */
+.ci-fade {
+  position: absolute; inset: 0; z-index: 2;
+  background: #000; opacity: 0; pointer-events: none;
+  transition: opacity 0.38s ease;
+}
+.ci-fade.on { opacity: 1; }
+.ci-photo-hint {
+  position: absolute; top: 18px; left: 18px; z-index: 3;
+  background: rgba(0,12,28,0.55); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 100px; padding: 7px 14px; font-size: 0.78rem; font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+  opacity: 0.8; transition: opacity 0.25s ease;
+}
+.ci-bg:hover .ci-photo-hint, .ci-bg:focus-visible .ci-photo-hint { opacity: 1; }
+
+/* Rail réseaux sociaux — bord gauche de l'écran, centré verticalement */
+.ci-socials {
+  position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+  z-index: 4; display: flex; flex-direction: column; gap: 12px;
+}
+.ci-socials a {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(0,12,28,0.55); border: 1px solid rgba(255,255,255,0.22);
+  color: #fff; backdrop-filter: blur(10px);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.ci-socials a svg { width: 20px; height: 20px; }
+.ci-socials a:hover { border-color: var(--a,#8bb6ff); background: rgba(0,12,28,0.75); transform: scale(1.08); }
+@media (max-width: 600px) {
+  /* Sous le badge « 1/3 » : le milieu d'écran est occupé par le nom en mobile */
+  .ci-socials { top: 70px; transform: none; }
+  .ci-socials a { width: 40px; height: 40px; }
+}
+
+/* Contenu texte ancré en BAS de l'écran : zone sans visage sur toute photo
+   (têtes en haut/milieu du cadre), donc le nom ne recouvre jamais la tête.
+   pointer-events:none → les clics traversent le texte et atteignent la photo
+   (galerie cliquable) ; seuls les boutons d'action restent interactifs. */
+.ci-content {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 14px;
+  padding: 24px clamp(20px, 6vw, 72px) clamp(28px, 6vh, 56px);
+  pointer-events: none;
+}
+.ci-actions .ci-btn { pointer-events: auto; }
+.ci-heading { line-height: 0.98; text-shadow: 0 3px 30px rgba(0,0,0,0.6); }
+/* Même graisse marquée que le nom de famille pour une typo cohérente */
+.ci-first { display: block; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem,2.6vw,2rem); opacity: 0.92; letter-spacing: 0.01em; }
+.ci-last { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(2.4rem,7vw,5.2rem); letter-spacing: -0.02em; text-transform: uppercase; }
+.ci-chips { display: flex; gap: 9px; flex-wrap: wrap; max-width: 80ch; }
+.ci-chips span { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 7px 16px; font-size: 0.85rem; backdrop-filter: blur(10px); }
+.ci-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.ci-btn { display: inline-flex; align-items: center; gap: 8px; background: rgba(12,18,30,0.5); border: 1px solid rgba(255,255,255,0.22); color: #fff; border-radius: 4px; padding: 13px 22px; font-family: var(--font-body); font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; backdrop-filter: blur(12px); transition: border-color 0.2s, background 0.2s; }
+.ci-btn:hover { background: rgba(12,18,30,0.7); border-color: var(--a,#8bb6ff); }
+.ci-btn-ic { width: 17px; height: 17px; }
+
+/* ===================== MODAL VIDÉOS ===================== */
+/* position:fixed + z-index 500 : passe AU-DESSUS du toggle de mode (z 400),
+   la croix de fermeture est donc toujours visible. */
+.ci-videos {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0, 8, 18, 0.85); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 24px;
+}
+.ci-videos-close {
+  position: absolute; top: 20px; right: 24px; z-index: 2;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #fff; border: none;
+  color: #0a0a0a; font-size: 1.2rem; font-weight: 600; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  transition: transform 0.2s, background 0.2s;
+}
+.ci-videos-close:hover { transform: scale(1.08); background: var(--gold, #ffd98a); }
+.ci-video-card {
+  width: min(720px, 94vw);
+  background: #fff; color: #0a0a0a;
+  border-radius: 24px; overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+}
+.ci-video-frame {
+  position: relative; aspect-ratio: 16 / 9; background: #000; overflow: hidden;
+}
+/* Recadrage : la vidéo source est une capture d'écran de navigateur (FIFA+),
+   on zoome dans l'image (--vzoom) et on la recentre (--vshift) pour ne montrer
+   QUE le terrain — ni onglets, ni barre d'adresse, ni habillage YouTube.
+   Réglable par clip depuis data/noa.ts. */
+.ci-video-frame iframe {
+  position: absolute; top: 50%; left: 50%;
+  width: 100%; height: 100%;
+  transform: translate(-50%, calc(-50% + var(--vshift, 0%))) scale(var(--vzoom, 1.25));
+  border: 0;
+}
+.ci-video-tools {
+  position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 2;
+}
+.ci-video-tools button {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; font-size: 1rem; cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.ci-video-tools button:hover { background: rgba(0,0,0,0.8); transform: scale(1.06); }
+.ci-video-num {
+  position: absolute; right: 14px; bottom: 14px; z-index: 2;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #fff; color: #c4a747;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.ci-video-body { padding: 22px 26px 26px; }
+.ci-video-body h3 {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;
+  color: #002451; margin: 0;
+}
+.ci-video-body .cat {
+  margin: 6px 0 0; font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: #c4a747;
+}
+.ci-video-body .desc { margin: 12px 0 0; color: #4b5563; font-size: 0.95rem; line-height: 1.6; }
+.ci-videos-nav { display: flex; align-items: center; gap: 20px; }
+.ci-videos-nav > button {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(0,12,28,0.6); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; cursor: pointer; display: grid; place-items: center;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.ci-videos-nav > button:hover { border-color: var(--a,#8bb6ff); transform: scale(1.06); }
+.ci-videos-nav > button svg { width: 22px; height: 22px; }
+.ci-videos-nav .dots { display: flex; gap: 10px; }
+.ci-videos-nav .dots button {
+  width: 11px; height: 11px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.35); padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.ci-videos-nav .dots button.on { background: var(--gold, #ffd98a); transform: scale(1.25); }
+.ci-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(420px,88vw); z-index: 5; background: linear-gradient(160deg,rgba(10,22,44,0.97),rgba(4,12,28,0.98)); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.1); box-shadow: -30px 0 80px rgba(0,0,0,0.5); padding: 70px 34px 40px; overflow-y: auto; transform: translateX(100%); transition: transform 0.5s cubic-bezier(.22,.61,.36,1); scrollbar-width: thin; scrollbar-color: var(--a,#8bb6ff) transparent; }
+.ci-panel.open { transform: translateX(0); }
+.ci-panel::-webkit-scrollbar { width: 6px; }
+.ci-panel::-webkit-scrollbar-thumb { background: var(--a,#8bb6ff); border-radius: 3px; }
+/* Croix à GAUCHE du panneau : le toggle Classique/Cinématique (fixe, en haut
+   à droite de l'écran) recouvrait une croix placée à droite. */
+.ci-close {
+  position: absolute; top: 20px; left: 24px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; font-size: 1.05rem; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.ci-close:hover { border-color: var(--a,#8bb6ff); background: rgba(255,255,255,0.15); }
+.ci-tag { color: rgba(255,255,255,0.65); font-style: italic; margin-bottom: 22px; }
+.ci-statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 26px; }
+.ci-stat { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
+.ci-stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; }
+.ci-stat .v span { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-left: 3px; }
+.ci-stat .l { color: rgba(255,255,255,0.55); font-size: 0.78rem; margin-top: 6px; }
+.ci-panel h4 { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; margin: 22px 0 12px; background: linear-gradient(90deg,var(--a,#8bb6ff),var(--b,#79e0cf)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.ci-list { display: flex; flex-direction: column; gap: 8px; }
+.ci-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 11px 14px; font-size: 0.88rem; }
+.ci-row .y { font-weight: 700; color: var(--a,#8bb6ff); min-width: 64px; }
+.ci-row .t { flex: 1; }
+.ci-row .d, .ci-row .c { color: rgba(255,255,255,0.55); font-size: 0.82rem; }
+.ci-row .c { font-weight: 700; color: var(--a,#8bb6ff); }
+.ci-empty { color: rgba(255,255,255,0.5); font-size: 0.92rem; line-height: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { transition: none; transform: none; opacity: 1; }
+}
