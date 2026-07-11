@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Tarifs — ATHLETE CV',
-  description: 'Paiement unique. Crée ton CV d\'athlète à partir de 79 €.',
+  description: 'Paiement unique. Crée ton CV d\'athlète à partir de 29 €.',
 }
 
 export default function TarifsPage() {
@@ -21,7 +21,7 @@ export default function TarifsPage() {
         <div className="grid cols-3">
           <div className="price-card reveal" data-delay="1">
             <div className="plan">Starter CV</div>
-            <div className="amount">79 €</div>
+            <div className="amount">29 €</div>
             <ul className="feat">
               <li>Répertoire complet, un lien à partager</li>
               <li>3 modifications incluses</li>
@@ -33,7 +33,7 @@ export default function TarifsPage() {
           <div className="price-card featured reveal" data-delay="2">
             <span className="price-badge">Populaire</span>
             <div className="plan">Pro Athlète</div>
-            <div className="amount">149 €</div>
+            <div className="amount">79 €</div>
             <ul className="feat">
               <li>Tout le Starter, sans la limite</li>
               <li>Mises à jour illimitées pendant 1 an</li>
@@ -43,20 +43,25 @@ export default function TarifsPage() {
           </div>
 
           <div className="price-card reveal" data-delay="3">
-            <div className="plan">Club / Académie</div>
-            <div className="amount">Sur devis</div>
+            <div className="plan">Sur-mesure</div>
+            <div className="amount">À partir de 149 €</div>
             <ul className="feat">
               <li>Gestion d&apos;une flotte de répertoires</li>
               <li>Espace dédié multi-sport</li>
               <li>Accompagnement personnalisé</li>
             </ul>
-            <Link href="/checkout?pack=club" className="btn btn-ghost">Nous contacter</Link>
+            <a
+              className="btn btn-ghost"
+              href="mailto:contact@athletecv.app?subject=Demande%20de%20devis%20%E2%80%94%20Offre%20Sur-mesure"
+            >
+              Demander un devis
+            </a>
           </div>
         </div>
 
         <p className="price-note reveal">
-          Les offres Pro et Club incluent un accompagnement dédié pour faire évoluer ta page tout
-          au long de la saison.
+          Les offres Pro et Sur-mesure incluent un accompagnement dédié pour faire évoluer ta page
+          tout au long de la saison.
         </p>
       </div>
     </section>

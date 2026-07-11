@@ -305,12 +305,58 @@ h2.title {
 
 /* -- Showcase : carte exemple unique, large -- */
 .showcase {
+  position: relative;
   display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 60px auto 0; max-width: 880px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl);
   overflow: hidden; text-decoration: none; color: inherit; text-align: left;
   box-shadow: 0 2px 24px rgba(0,0,0,0.28);
   transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s;
 }
+.showcase-link-wrap { display: contents; }
+/* Ribbon badge sits outside the profile <Link> (sibling, not nested) to keep HTML valid */
+.cine-ribbon {
+  position: absolute; top: 20px; right: -1px; z-index: 4;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 20px 10px 16px; border-radius: 100px 0 0 100px;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  color: #06121f; font-family: var(--font-body); font-weight: 700;
+  font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase;
+  text-decoration: none; box-shadow: 0 8px 24px rgba(139,182,255,0.4);
+  animation: cine-ribbon-glow 2.4s ease-in-out infinite;
+  transition: transform 0.25s;
+}
+.cine-ribbon:hover { transform: translateX(-4px) scale(1.04); }
+.cine-ribbon-dot { width: 7px; height: 7px; border-radius: 50%; background: #06121f; animation: cine-dot-pulse 1.8s infinite; }
+@keyframes cine-ribbon-glow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(139,182,255,0.4); }
+  50% { box-shadow: 0 8px 30px rgba(121,224,207,0.6); }
+}
+@keyframes cine-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (max-width: 680px) {
+  .cine-ribbon { top: 12px; right: 12px; border-radius: 100px; padding: 8px 14px; }
+}
+
+/* Spotlight CTA block for the cinematic mode section */
+.cine-spotlight {
+  position: relative; border-radius: var(--radius-xl); padding: 64px 40px;
+  border: 1px solid rgba(139,182,255,0.28); overflow: hidden;
+  background: radial-gradient(120% 160% at 50% -10%, rgba(139,182,255,0.18), transparent 60%), var(--surface);
+}
+.cine-spotlight::before {
+  content: ''; position: absolute; inset: -60%;
+  background: conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--gold), var(--accent));
+  opacity: 0.1; filter: blur(70px); animation: cine-spin 14s linear infinite; z-index: 0;
+}
+.cine-spotlight > * { position: relative; z-index: 1; }
+@keyframes cine-spin { to { transform: rotate(360deg); } }
+.cine-spotlight-badge {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px;
+  padding: 7px 16px; border-radius: 100px; font-weight: 700; font-size: 0.72rem;
+  letter-spacing: 0.08em; text-transform: uppercase; color: #06121f;
+  background: linear-gradient(120deg, var(--accent-2), var(--accent));
+}
+.cine-cta-btn { font-size: 1.05rem; padding: 20px 42px; gap: 10px; display: inline-flex; align-items: center; }
+.cine-cta-dot { width: 8px; height: 8px; border-radius: 50%; background: #06121f; animation: cine-dot-pulse 1.6s infinite; }
 .showcase:hover { transform: translateY(-6px); border-color: var(--gold); box-shadow: 0 22px 55px rgba(0,0,0,0.45); }
 .showcase-media { position: relative; min-height: 280px; overflow: hidden; background: var(--surface-2); }
 .showcase-media img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; transition: transform 0.5s cubic-bezier(.22,.61,.36,1); }

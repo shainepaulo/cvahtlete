@@ -20,35 +20,47 @@ export default function ExemplesPage() {
             Clique pour explorer le profil complet.
           </p>
 
-          <Link className="showcase reveal" data-delay="1" href="/profil?a=dembele">
-            <div className="showcase-media">
-              <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
-              <span className="showcase-emoji">⚽</span>
-            </div>
-            <div className="showcase-body">
-              <span className="showcase-badge">🏅 Ballon d&apos;Or 2025</span>
-              <div className="showcase-name">Ousmane Dembélé</div>
-              <div className="showcase-sport">⚽ Football · Ailier · Paris SG</div>
-              <div className="showcase-stats">
-                <div><div className="v count" data-to="57">57</div><div className="l">Sélections 🇫🇷</div></div>
-                <div><div className="v">100M€</div><div className="l">Valeur</div></div>
+          <div className="showcase reveal" data-delay="1">
+            {/* Sibling of the profile link, not nested inside it — keeps the anchor tags valid */}
+            <a className="cine-ribbon" href="/cine?u=dembele">
+              <span className="cine-ribbon-dot" />
+              🎬 Mode cinématique
+            </a>
+            <Link className="showcase-link-wrap" href="/profil?a=dembele">
+              <div className="showcase-media">
+                <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
+                <span className="showcase-emoji">⚽</span>
               </div>
-              <span className="showcase-link">Explorer le profil →</span>
-            </div>
-          </Link>
+              <div className="showcase-body">
+                <span className="showcase-badge">🏅 Ballon d&apos;Or 2025</span>
+                <div className="showcase-name">Ousmane Dembélé</div>
+                <div className="showcase-sport">⚽ Football · Ailier · Paris SG</div>
+                <div className="showcase-stats">
+                  <div><div className="v count" data-to="57">57</div><div className="l">Sélections 🇫🇷</div></div>
+                  <div><div className="v">100M€</div><div className="l">Valeur</div></div>
+                </div>
+                <span className="showcase-link">Explorer le profil →</span>
+              </div>
+            </Link>
+          </div>
         </div>
       </section>
 
       <section className="section center">
         <div className="container reveal">
-          <span className="tag">Version premium</span>
-          <h2 className="title">Envie de spectaculaire&nbsp;?</h2>
-          <p className="lead-2">
-            La version cinématique interactive — image plein écran, scène animée et révélation
-            au survol. Une expérience qui marque les esprits.
-          </p>
-          <div className="hero-actions" style={{ marginTop: 34 }}>
-            <a href="/cine?u=dembele" className="btn btn-primary">Voir le mode cinématique ⚽</a>
+          <div className="cine-spotlight">
+            <span className="cine-spotlight-badge">🎬 Expérience signature</span>
+            <h2 className="title">Envie de spectaculaire&nbsp;?</h2>
+            <p className="lead-2">
+              La version cinématique interactive — image plein écran, scène animée et révélation
+              au survol. Une expérience qui marque les esprits, à découvrir en quelques secondes.
+            </p>
+            <div className="hero-actions" style={{ marginTop: 34 }}>
+              <a href="/cine?u=dembele" className="btn btn-primary cine-cta-btn">
+                <span className="cine-cta-dot" />
+                Voir le mode cinématique ⚽
+              </a>
+            </div>
           </div>
         </div>
       </section>

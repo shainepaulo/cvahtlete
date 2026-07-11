@@ -23,9 +23,9 @@ export default function CgvPage() {
       <h2>2. Services et offres</h2>
       <p>Le Site propose la création d&apos;un CV / profil d&apos;athlète en ligne accessible via un lien. Les offres et leurs caractéristiques :</p>
       <ul>
-        <li><strong>Starter CV — 79 €</strong> : CV complet, lien à partager, <strong>3 modifications incluses</strong>, mises à jour par contact équipe.</li>
-        <li><strong>Pro Athlète — 149 €</strong> : mises à jour illimitées pendant 1 an, mode cinématique débloqué, support prioritaire.</li>
-        <li><strong>Club / Académie</strong> : sur devis.</li>
+        <li><strong>Starter CV — 29 €</strong> : CV complet, lien à partager, <strong>3 modifications incluses</strong>, mises à jour par contact équipe.</li>
+        <li><strong>Pro Athlète — 79 €</strong> : mises à jour illimitées pendant 1 an, mode cinématique débloqué, support prioritaire.</li>
+        <li><strong>Sur-mesure — à partir de 149 €</strong> : sur devis, sur demande de contact.</li>
       </ul>
 
       <h2>3. Prix</h2>
