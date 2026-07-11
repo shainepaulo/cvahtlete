@@ -743,6 +743,39 @@ h1.display .grad:hover { animation: gradflow 3s linear infinite; } /* relance au
   .bg-fx .ring { transform: none !important; }
 }
 
+/* ===================== BIBLIOTHÈQUE (Tâche 4) ===================== */
+.lib-card { text-decoration: none; color: inherit; display: block; }
+.lib-card-emoji { font-size: 2.2rem; display: block; margin-bottom: 14px; }
+
+/* ===================== PRIVACY LOCK (coordonnées sensibles) =====================
+   Floutage CSS des numéros / e-mails + flux de déverrouillage sur clic.
+   Réutilisable par tout CV (ProfileView, CV de Noa…) via components/privacy/BlurValue. */
+.privacy-blur {
+  position: relative; display: inline-flex; align-items: center;
+  font: inherit; color: inherit; background: none; border: none; padding: 0;
+  cursor: pointer; text-align: left; border-radius: var(--radius-sm, 6px);
+}
+.privacy-blur-value {
+  filter: blur(6px); user-select: none; pointer-events: none;
+  transition: filter 0.25s;
+}
+.privacy-blur-overlay {
+  position: absolute; inset: -6px -10px; display: inline-flex; align-items: center;
+  justify-content: center; gap: 7px; white-space: nowrap;
+  background: rgba(0, 12, 28, 0.72); border: 1px dashed rgba(255, 255, 255, 0.32);
+  border-radius: var(--radius-sm, 6px); font-size: 0.78rem; font-weight: 600;
+  letter-spacing: 0.01em; color: var(--text, #eef3ff);
+  transition: border-color 0.2s, background 0.2s;
+}
+.privacy-blur:hover .privacy-blur-overlay { border-color: var(--gold, #ffd98a); }
+.privacy-blur:disabled { cursor: wait; }
+.privacy-spinner {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: var(--gold, #ffd98a);
+  animation: privacy-spin 0.7s linear infinite;
+}
+@keyframes privacy-spin { to { transform: rotate(360deg); } }
+
 /* ===================== MODE ALLÉGÉ (machines modestes) =====================
    Classe posée par SiteEffects (cœurs CPU / mémoire faibles) : on coupe le
    décor coûteux, le contenu et la DA restent identiques. */

@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import AdminUsersDashboard, { type AdminUserRow } from '@/components/admin/AdminUsersDashboard'
+import AdminCvsVisibility, { type AdminCvRow } from '@/components/admin/AdminCvsVisibility'
+import AdminPrivacyToggle from '@/components/admin/AdminPrivacyToggle'
 
 /**
  * Espace Admin — réservé au owner (godpower).
@@ -19,7 +21,7 @@ export default async function AdminPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('email, is_owner, is_super_admin, account_status')
+    .select('email, is_owner, is_super_admin, account_status, admin_force_contact_mask')
     .eq('id', user.id)
     .single()
 
@@ -27,12 +29,27 @@ export default async function AdminPage() {
   if (!profile?.is_owner && !profile?.is_super_admin) redirect('/dashboard')
 
   const admin = createAdminClient()
-  const { data: rows } = await admin
-    .from('profiles')
-    .select('id, email, full_name, plan, account_status, is_owner, is_super_admin, created_at')
-    .order('created_at', { ascending: false })
+  const [{ data: rows }, { data: cvRows }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('id, email, full_name, plan, account_status, is_owner, is_super_admin, created_at')
+      .order('created_at', { ascending: false }),
+    admin
+      .from('cvs')
+      .select('id, slug, first, last, visibility, user_id')
+      .order('created_at', { ascending: false }),
+  ])
 
   const users = (rows ?? []) as AdminUserRow[]
+  const emailByUserId = new Map(users.map((u) => [u.id, u.email]))
+  const cvs: AdminCvRow[] = (cvRows ?? []).map((row) => ({
+    id: String(row.id),
+    slug: String(row.slug),
+    first: String(row.first),
+    last: String(row.last),
+    visibility: String(row.visibility),
+    owner_email: emailByUserId.get(String(row.user_id)) ?? 'inconnu',
+  }))
 
   return (
     <div className="app-wrap wide">
@@ -63,6 +80,10 @@ export default async function AdminPage() {
       </div>
 
       <AdminUsersDashboard currentEmail={profile.email} rows={users} />
+
+      <AdminPrivacyToggle initialMasked={profile.admin_force_contact_mask ?? true} />
+
+      <AdminCvsVisibility rows={cvs} />
 
       <div className="app-card">
         <p style={{ color: 'var(--muted-2)', fontSize: '.82rem' }}>

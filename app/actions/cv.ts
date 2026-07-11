@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { normalizePublicLinks } from "@/utils/public-links";
 
 // ─── Type partagé (CineView · ProfileView · builder · /[slug]) ───────────────
@@ -248,5 +249,49 @@ export async function getCvBySlug(slug: string): Promise<CvData | null> {
   const supabase = createClient();
   const { data } = await supabase
     .from("cvs").select("*").eq("slug", slug).maybeSingle();
-  return data ? rowToCv(data as Record<string, unknown>) : null;
+  if (data) return rowToCv(data as Record<string, unknown>);
+
+  // RLS a bloqué la lecture (CV privé, visiteur ni propriétaire ni owner).
+  // Mode « Lien Direct » (Tâche 4) : un CV privé reste accessible à quiconque
+  // connaît son slug exact — seule la Bibliothèque publique le masque.
+  // Connaître le slug fait office de clé d'accès ; on relit donc en
+  // service_role, en contournant volontairement la RLS pour CE lookup ciblé.
+  const admin = createAdminClient();
+  const { data: direct } = await admin
+    .from("cvs").select("*").eq("slug", slug).maybeSingle();
+  return direct ? rowToCv(direct as Record<string, unknown>) : null;
+}
+
+// ─── Lecture : Bibliothèque publique (Tâche 4) ────────────────────────────────
+
+export interface PublicCvSummary {
+  slug: string;
+  first: string;
+  last: string;
+  sport: string;
+  emoji: string;
+  tagline?: string;
+  location?: string;
+  avatar?: string;
+}
+
+export async function listPublicCvs(): Promise<PublicCvSummary[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return [];
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("cvs")
+    .select("slug, first, last, sport, tagline, location, avatar_url, created_at")
+    .eq("visibility", "public")
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((row) => ({
+    slug: String(row.slug ?? ""),
+    first: String(row.first ?? ""),
+    last: String(row.last ?? ""),
+    sport: String(row.sport ?? ""),
+    emoji: EMOJI[String(row.sport)] ?? "🏅",
+    tagline: (row.tagline as string) || undefined,
+    location: (row.location as string) || undefined,
+    avatar: (row.avatar_url as string) || undefined,
+  }));
 }

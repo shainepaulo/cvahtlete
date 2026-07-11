@@ -1,0 +1,208 @@
+/* ============================================================
+   CV DE NOA — Mode Cinématique + Toggle de mode
+   Namespace dédié "noa-ci-*" / "noa-mode-switch" (importé uniquement par
+   NoaCvExperience) pour cohabiter avec le mode cinématique générique
+   d'ATHLETE CV (/cine, classes "ci-*") sans jamais s'écraser mutuellement.
+   ============================================================ */
+
+/* ===================== TOGGLE DE MODE ===================== */
+.noa-mode-switch {
+  position: fixed; top: 18px; right: 18px; z-index: 400;
+  display: flex; gap: 4px; padding: 4px; border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,18,38,0.72); backdrop-filter: blur(14px);
+}
+.noa-mode-switch button {
+  border-radius: 100px; border: none; padding: 9px 18px;
+  font-family: var(--font-body); font-size: 0.72rem;
+  letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
+  background: transparent; color: var(--muted); font-weight: 400;
+  transition: background 0.25s, color 0.25s;
+}
+.noa-mode-switch button.on { background: var(--grad); color: #002451; font-weight: 600; }
+@media (max-width: 480px) {
+  .noa-mode-switch { top: 12px; right: 12px; }
+  .noa-mode-switch button { padding: 8px 12px; font-size: 0.62rem; letter-spacing: 0.06em; }
+}
+
+/* ===================== CINÉMATIQUE ===================== */
+.noa-cine-wrap { position: fixed; inset: 0; color: #fff; font-family: var(--font-body); background: #001226; z-index: 300; }
+.noa-ci-bg { position: absolute; inset: 0; z-index: 0; background: #001226; display: block; width: 100%; height: 100%; }
+.noa-ci-bg img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.92) contrast(1.08); }
+.noa-ci-scrim {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(0deg, rgba(0,12,28,0.95) 0%, rgba(0,12,28,0.55) 32%, rgba(0,12,28,0.05) 62%, transparent 100%),
+    radial-gradient(ellipse 130% 90% at 50% 100%, rgba(0,0,0,0.55) 0%, transparent 60%);
+}
+/* Fondu noir entre les photos de la galerie */
+.noa-ci-fade {
+  position: absolute; inset: 0; z-index: 2;
+  background: #000; opacity: 0; pointer-events: none;
+  transition: opacity 0.38s ease;
+}
+.noa-ci-fade.on { opacity: 1; }
+.noa-ci-photo-hint {
+  position: absolute; top: 18px; left: 18px; z-index: 3;
+  background: rgba(0,12,28,0.55); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 100px; padding: 7px 14px; font-size: 0.78rem; font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+  opacity: 0.8; transition: opacity 0.25s ease;
+}
+.noa-ci-bg:hover .noa-ci-photo-hint, .noa-ci-bg:focus-visible .noa-ci-photo-hint { opacity: 1; }
+
+/* Rail réseaux sociaux — bord gauche de l'écran, centré verticalement */
+.noa-ci-socials {
+  position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+  z-index: 4; display: flex; flex-direction: column; gap: 12px;
+}
+.noa-ci-socials a {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(0,12,28,0.55); border: 1px solid rgba(255,255,255,0.22);
+  color: #fff; backdrop-filter: blur(10px);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.noa-ci-socials a svg { width: 20px; height: 20px; }
+.noa-ci-socials a:hover { border-color: var(--a,#8bb6ff); background: rgba(0,12,28,0.75); transform: scale(1.08); }
+@media (max-width: 600px) {
+  /* Sous le badge « 1/3 » : le milieu d'écran est occupé par le nom en mobile */
+  .noa-ci-socials { top: 70px; transform: none; }
+  .noa-ci-socials a { width: 40px; height: 40px; }
+}
+
+/* Contenu texte ancré en BAS de l'écran : zone sans visage sur toute photo
+   (têtes en haut/milieu du cadre), donc le nom ne recouvre jamais la tête.
+   pointer-events:none → les clics traversent le texte et atteignent la photo
+   (galerie cliquable) ; seuls les boutons d'action restent interactifs. */
+.noa-ci-content {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 14px;
+  padding: 24px clamp(20px, 6vw, 72px) clamp(28px, 6vh, 56px);
+  pointer-events: none;
+}
+.noa-ci-actions .noa-ci-btn { pointer-events: auto; }
+.noa-ci-heading { line-height: 0.98; text-shadow: 0 3px 30px rgba(0,0,0,0.6); }
+/* Même graisse marquée que le nom de famille pour une typo cohérente */
+.noa-ci-first { display: block; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem,2.6vw,2rem); opacity: 0.92; letter-spacing: 0.01em; }
+.noa-ci-last { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(2.4rem,7vw,5.2rem); letter-spacing: -0.02em; text-transform: uppercase; }
+.noa-ci-chips { display: flex; gap: 9px; flex-wrap: wrap; max-width: 80ch; }
+.noa-ci-chips span { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 7px 16px; font-size: 0.85rem; backdrop-filter: blur(10px); }
+.noa-ci-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.noa-ci-btn { display: inline-flex; align-items: center; gap: 8px; background: rgba(12,18,30,0.5); border: 1px solid rgba(255,255,255,0.22); color: #fff; border-radius: 4px; padding: 13px 22px; font-family: var(--font-body); font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; backdrop-filter: blur(12px); transition: border-color 0.2s, background 0.2s; }
+.noa-ci-btn:hover { background: rgba(12,18,30,0.7); border-color: var(--a,#8bb6ff); }
+.noa-ci-btn-ic { width: 17px; height: 17px; }
+
+/* ===================== MODAL VIDÉOS ===================== */
+/* position:fixed + z-index 500 : passe AU-DESSUS du toggle de mode (z 400),
+   la croix de fermeture est donc toujours visible. */
+.noa-ci-videos {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0, 8, 18, 0.85); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 24px;
+}
+.noa-ci-videos-close {
+  position: absolute; top: 20px; right: 24px; z-index: 2;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #fff; border: none;
+  color: #0a0a0a; font-size: 1.2rem; font-weight: 600; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  transition: transform 0.2s, background 0.2s;
+}
+.noa-ci-videos-close:hover { transform: scale(1.08); background: var(--gold, #ffd98a); }
+.noa-ci-video-card {
+  width: min(720px, 94vw);
+  background: #fff; color: #0a0a0a;
+  border-radius: 24px; overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+}
+.noa-ci-video-frame {
+  position: relative; aspect-ratio: 16 / 9; background: #000; overflow: hidden;
+}
+/* Recadrage : la vidéo source est une capture d'écran de navigateur (FIFA+),
+   on zoome dans l'image (--vzoom) et on la recentre (--vshift) pour ne montrer
+   QUE le terrain — ni onglets, ni barre d'adresse, ni habillage YouTube.
+   Réglable par clip depuis data/noa.ts. */
+.noa-ci-video-frame iframe {
+  position: absolute; top: 50%; left: 50%;
+  width: 100%; height: 100%;
+  transform: translate(-50%, calc(-50% + var(--vshift, 0%))) scale(var(--vzoom, 1.25));
+  border: 0;
+}
+.noa-ci-video-tools {
+  position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 2;
+}
+.noa-ci-video-tools button {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; font-size: 1rem; cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.noa-ci-video-tools button:hover { background: rgba(0,0,0,0.8); transform: scale(1.06); }
+.noa-ci-video-num {
+  position: absolute; right: 14px; bottom: 14px; z-index: 2;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #fff; color: #c4a747;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.noa-ci-video-body { padding: 22px 26px 26px; }
+.noa-ci-video-body h3 {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;
+  color: #002451; margin: 0;
+}
+.noa-ci-video-body .cat {
+  margin: 6px 0 0; font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: #c4a747;
+}
+.noa-ci-video-body .desc { margin: 12px 0 0; color: #4b5563; font-size: 0.95rem; line-height: 1.6; }
+.noa-ci-videos-nav { display: flex; align-items: center; gap: 20px; }
+.noa-ci-videos-nav > button {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(0,12,28,0.6); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; cursor: pointer; display: grid; place-items: center;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.noa-ci-videos-nav > button:hover { border-color: var(--a,#8bb6ff); transform: scale(1.06); }
+.noa-ci-videos-nav > button svg { width: 22px; height: 22px; }
+.noa-ci-videos-nav .dots { display: flex; gap: 10px; }
+.noa-ci-videos-nav .dots button {
+  width: 11px; height: 11px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.35); padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.noa-ci-videos-nav .dots button.on { background: var(--gold, #ffd98a); transform: scale(1.25); }
+.noa-ci-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(420px,88vw); z-index: 5; background: linear-gradient(160deg,rgba(10,22,44,0.97),rgba(4,12,28,0.98)); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.1); box-shadow: -30px 0 80px rgba(0,0,0,0.5); padding: 70px 34px 40px; overflow-y: auto; transform: translateX(100%); transition: transform 0.5s cubic-bezier(.22,.61,.36,1); scrollbar-width: thin; scrollbar-color: var(--a,#8bb6ff) transparent; }
+.noa-ci-panel.open { transform: translateX(0); }
+.noa-ci-panel::-webkit-scrollbar { width: 6px; }
+.noa-ci-panel::-webkit-scrollbar-thumb { background: var(--a,#8bb6ff); border-radius: 3px; }
+/* Croix à GAUCHE du panneau : le toggle Classique/Cinématique (fixe, en haut
+   à droite de l'écran) recouvrirait une croix placée à droite. */
+.noa-ci-close {
+  position: absolute; top: 20px; left: 24px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; font-size: 1.05rem; cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.noa-ci-close:hover { border-color: var(--a,#8bb6ff); background: rgba(255,255,255,0.15); }
+.noa-ci-tag { color: rgba(255,255,255,0.65); font-style: italic; margin-bottom: 22px; }
+.noa-ci-statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 26px; }
+.noa-ci-stat { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
+.noa-ci-stat .v { font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; }
+.noa-ci-stat .v span { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-left: 3px; }
+.noa-ci-stat .l { color: rgba(255,255,255,0.55); font-size: 0.78rem; margin-top: 6px; }
+.noa-ci-panel h4 { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; margin: 22px 0 12px; background: linear-gradient(90deg,var(--a,#8bb6ff),var(--b,#79e0cf)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.noa-ci-list { display: flex; flex-direction: column; gap: 8px; }
+.noa-ci-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 11px 14px; font-size: 0.88rem; }
+.noa-ci-row .y { font-weight: 700; color: var(--a,#8bb6ff); min-width: 64px; }
+.noa-ci-row .t { flex: 1; }
+.noa-ci-row .d, .noa-ci-row .c { color: rgba(255,255,255,0.55); font-size: 0.82rem; }
+.noa-ci-row .c { font-weight: 700; color: var(--a,#8bb6ff); }
+.noa-ci-empty { color: rgba(255,255,255,0.5); font-size: 0.92rem; line-height: 1.6; }
