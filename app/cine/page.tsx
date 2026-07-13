@@ -19,10 +19,16 @@ const CineView = dynamic(() => import('@/components/CineView'), {
 // Slugs servis depuis /public/data (vitrine démo, pas d'utilisateur réel).
 const DEMO_SLUGS = new Set(['dembele'])
 
+// CV complet des démos : route dédiée (la route [slug] Supabase ne les connaît pas).
+const DEMO_COMPLET: Record<string, string> = { dembele: '/cv/dembele/complet' }
+// Mode Classique des démos : le profil vitrine JSON.
+const DEMO_CLASSIC: Record<string, string> = { dembele: '/profil?a=dembele' }
+
 interface RawDemo {
   first?: string; last?: string; sport?: string; location?: string; tagline?: string
   colors?: { a?: string; b?: string }
   stats?: unknown; palmares?: unknown; career?: unknown; links?: unknown
+  gallery?: unknown
 }
 
 function demoToCv(raw: RawDemo, slug: string): CvData {
@@ -46,6 +52,8 @@ function CineContent() {
   const [cv, setCv] = useState<CvData | null>(null)
   const [tagline, setTagline] = useState('')
   const [cinematic, setCinematic] = useState(false)
+  const [gallery, setGallery] = useState<unknown>([])
+  const [completHref, setCompletHref] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -67,6 +75,8 @@ function CineContent() {
           if (!alive) return
           setTagline(raw.tagline || '')
           setCv(demoToCv(raw, id))
+          setGallery(raw.gallery ?? [])
+          setCompletHref(DEMO_COMPLET[id])
           setCinematic(true)
         })
         .catch(() => alive && setError('CV introuvable'))
@@ -77,6 +87,12 @@ function CineContent() {
         if (!data) { setError('CV introuvable ou accès refusé'); return }
         setTagline(data.tagline || '')
         setCv(data)
+        // Photo cinématique du builder (cine_bg_url) : galerie d'une image
+        setGallery(
+          data.cineBg
+            ? [{ src: data.cineBg, alt: `${data.first} ${data.last}`, position: `${data.cineBgPosX ?? 50}% ${data.cineBgPosY ?? 50}%` }]
+            : [],
+        )
         setCinematic(!!(data.cinematic))
       })
     }
@@ -104,7 +120,15 @@ function CineContent() {
     )
   }
 
-  return <CineView cv={cv} cinematic={cinematic} tagline={tagline} />
+  // Encoche « Mode Classique » : profil démo pour la vitrine, page publique sinon.
+  const classicHref = DEMO_CLASSIC[cv.slug] ?? `/${cv.slug}`
+
+  return (
+    <CineView
+      cv={cv} cinematic={cinematic} tagline={tagline}
+      gallery={gallery} completHref={completHref} classicHref={classicHref}
+    />
+  )
 }
 
 export default function CinePage() {

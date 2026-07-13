@@ -48,6 +48,27 @@ function SignupForm() {
         <form onSubmit={onSubmit}>
           <input type="hidden" name="next" value={next} />
           <div className="field">
+            <span className="field-label">Je suis…</span>
+            <div className="role-picker" role="radiogroup" aria-label="Ton profil">
+              <label className="role-opt">
+                <input type="radio" name="user_role" value="athlete" defaultChecked required />
+                <span className="role-card">
+                  <span className="role-ic">🏅</span>
+                  <span className="role-t">Athlète</span>
+                  <span className="role-d">Je crée mon CV sportif</span>
+                </span>
+              </label>
+              <label className="role-opt">
+                <input type="radio" name="user_role" value="agent" required />
+                <span className="role-card">
+                  <span className="role-ic">🤝</span>
+                  <span className="role-t">Agent · Club · Sponsor</span>
+                  <span className="role-d">Je recrute ou j&apos;accompagne</span>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div className="field">
             <label htmlFor="name">Nom complet</label>
             <input id="name" name="name" type="text" autoComplete="name" required />
           </div>

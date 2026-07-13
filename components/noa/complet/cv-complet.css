@@ -310,13 +310,44 @@
   .cvc-page .footer-actions { width: 100%; justify-content: center; }
 }
 
-/* Print Styles */
+/* ===== Impression : PDF natif thémé ATHLETE CV (window.print) =====
+   Utilisé par tous les joueurs sans PDF importé (Dembélé et futurs profils).
+   Noa, exception, ouvre son PDF officiel — ce bloc ne le concerne pas. */
 @media print {
+  @page { size: A4; margin: 10mm; }
   .cvc-page .nav-bar,
   .cvc-page .footer-actions,
-  .cvc-page .photo-hint { display: none !important; }
-  .cvc-page { background: white; position: static; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .cvc-page .photo-hint,
+  .cvc-page .jersey-number,
+  .cvc-page .toast { display: none !important; }
+  /* position:fixed + overflow-y:auto tronquerait l'impression à une seule page */
+  .cvc-page {
+    position: static; overflow: visible; background: #fff;
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
   .cvc-page .cv-container { padding: 0; max-width: 100%; }
-  .cvc-page .cv-header, .cvc-page .cv-section, .cvc-page .cv-footer { box-shadow: none; break-inside: avoid; }
-  .cvc-page .skill-fill { width: var(--width) !important; }
+  /* Header : conserve le navy du thème (les moteurs print gardent le fond via color-adjust) */
+  .cvc-page .cv-header {
+    box-shadow: none; border-radius: 14px; padding: 24px; gap: 24px;
+    break-inside: avoid;
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .cvc-page .photo-wrapper { width: 150px; height: 190px; }
+  /* La photo inactive (opacity:0) laisserait un cadre vide sur le papier */
+  .cvc-page .player-photo { opacity: 1; }
+  .cvc-page .player-photo:not(.active) { display: none; }
+  .cvc-page .cv-section, .cvc-page .cv-footer {
+    box-shadow: none; border: 1px solid #e5e7eb;
+    break-inside: avoid; padding: 16px 18px;
+  }
+  .cvc-page .cv-content { gap: 14px; }
+  .cvc-page .cv-column { gap: 14px; }
+  /* L'IntersectionObserver ne tourne pas avant l'impression : barres à pleine valeur */
+  .cvc-page .skill-fill { width: var(--width) !important; transition: none; }
+  /* Fonds colorés du thème (cartes de poste, barres, timeline) préservés au print */
+  .cvc-page .position-card.primary, .cvc-page .position-card.secondary,
+  .cvc-page .timeline::before, .cvc-page .skill-fill, .cvc-page .team-badge {
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
+  }
+  .cvc-page .cv-footer { margin-top: 14px; }
 }

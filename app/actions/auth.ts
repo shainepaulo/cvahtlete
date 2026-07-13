@@ -85,13 +85,22 @@ export async function signIn(formData: FormData): Promise<AuthState> {
 // INSCRIPTION
 // ---------------------------------------------------------------------------
 
+/** Profils autorisés à l'inscription — re-validés côté serveur ET en base (check). */
+const USER_ROLES = ["athlete", "agent"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
 export async function signUp(formData: FormData): Promise<AuthState> {
   const fullName = String(formData.get("name") ?? "").trim().slice(0, 80);
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const roleRaw = String(formData.get("user_role") ?? "");
   const next = safeNext(formData.get("next"));
 
   if (!email || !fullName) return { error: "Nom et e-mail requis." };
+  if (!USER_ROLES.includes(roleRaw as UserRole)) {
+    return { error: "Choisis ton profil : Athlète ou Agent / Club / Sponsor." };
+  }
+  const userRole = roleRaw as UserRole;
   const pwErr = passwordError(password);
   if (pwErr) return { error: pwErr };
   if (!hasSupabaseConfig()) return { error: "Configuration Supabase manquante sur le serveur." };
@@ -101,7 +110,8 @@ export async function signUp(formData: FormData): Promise<AuthState> {
     email,
     password,
     options: {
-      data: { full_name: fullName },
+      // user_role est relayé en base par le trigger handle_new_user (migration 00010).
+      data: { full_name: fullName, user_role: userRole },
       emailRedirectTo: `${requestOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });

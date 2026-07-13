@@ -166,8 +166,9 @@ export interface PalmaresYearItem {
 }
 
 /**
- * Page « CV complet » — même modèle que cv-dembele.json
- * (interface info.html : header navy, colonnes profil/compétences, footer print).
+ * Page « CV complet » — interface info.html : header navy, colonnes
+ * profil/compétences, footer print. Modèle partagé par tous les joueurs
+ * (Noa, démo Dembélé, futurs profils).
  */
 export interface NoaCompletData {
   photo1: string
@@ -185,8 +186,26 @@ export interface NoaCompletData {
   skills: SkillRating[]
   timeline: TimelineEntry[]
   palmares: PalmaresYearItem[]
-  pdfUrl: string
+  /** PDF officiel importé (exception Noa). Absent → impression navigateur thémée. */
+  pdfUrl?: string
   lastUpdate: string
+}
+
+/** Sous-ensemble d'identité requis par la vue CV complet (header + contacts). */
+export interface CompletIdentity {
+  first: string
+  last: string
+  contact: ContactItem[]
+}
+
+/**
+ * Profil minimal consommé par CvCompletView — NoaProfile y est
+ * structurellement assignable ; les profils démo (Dembélé) le remplissent
+ * directement sans porter les sections classic/cinematic.
+ */
+export interface CvCompletProfile {
+  identity: CompletIdentity
+  complet: NoaCompletData
 }
 
 export interface NoaProfile {

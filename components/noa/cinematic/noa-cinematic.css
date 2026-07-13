@@ -52,24 +52,22 @@
 }
 .noa-ci-bg:hover .noa-ci-photo-hint, .noa-ci-bg:focus-visible .noa-ci-photo-hint { opacity: 1; }
 
-/* Rail réseaux sociaux — bord gauche de l'écran, centré verticalement */
-.noa-ci-socials {
-  position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
-  z-index: 4; display: flex; flex-direction: column; gap: 12px;
+/* Flèches de navigation de la galerie — bords gauche/droit, centrées verticalement
+   (z-index 4 : au-dessus de la photo cliquable, sous le panneau stats z 5) */
+.noa-ci-gal-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 4;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(0,12,28,0.6); border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; cursor: pointer; display: grid; place-items: center;
+  backdrop-filter: blur(10px);
+  transition: border-color 0.2s, transform 0.2s;
 }
-.noa-ci-socials a {
-  width: 46px; height: 46px; border-radius: 50%;
-  display: grid; place-items: center;
-  background: rgba(0,12,28,0.55); border: 1px solid rgba(255,255,255,0.22);
-  color: #fff; backdrop-filter: blur(10px);
-  transition: border-color 0.2s, background 0.2s, transform 0.2s;
-}
-.noa-ci-socials a svg { width: 20px; height: 20px; }
-.noa-ci-socials a:hover { border-color: var(--a,#8bb6ff); background: rgba(0,12,28,0.75); transform: scale(1.08); }
+.noa-ci-gal-nav:hover { border-color: var(--a,#8bb6ff); transform: translateY(-50%) scale(1.06); }
+.noa-ci-gal-nav.prev { left: 16px; }
+.noa-ci-gal-nav.next { right: 16px; }
+.noa-ci-gal-nav svg { width: 22px; height: 22px; }
 @media (max-width: 600px) {
-  /* Sous le badge « 1/3 » : le milieu d'écran est occupé par le nom en mobile */
-  .noa-ci-socials { top: 70px; transform: none; }
-  .noa-ci-socials a { width: 40px; height: 40px; }
+  .noa-ci-gal-nav { width: 40px; height: 40px; }
 }
 
 /* Contenu texte ancré en BAS de l'écran : zone sans visage sur toute photo
@@ -83,17 +81,42 @@
   padding: 24px clamp(20px, 6vw, 72px) clamp(28px, 6vh, 56px);
   pointer-events: none;
 }
-.noa-ci-actions .noa-ci-btn { pointer-events: auto; }
+.noa-ci-actions .noa-ci-btn, .noa-ci-actions .noa-ci-social-round { pointer-events: auto; }
 .noa-ci-heading { line-height: 0.98; text-shadow: 0 3px 30px rgba(0,0,0,0.6); }
 /* Même graisse marquée que le nom de famille pour une typo cohérente */
 .noa-ci-first { display: block; font-family: var(--font-display); font-weight: 700; font-size: clamp(1.3rem,2.6vw,2rem); opacity: 0.92; letter-spacing: 0.01em; }
 .noa-ci-last { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(2.4rem,7vw,5.2rem); letter-spacing: -0.02em; text-transform: uppercase; }
 .noa-ci-chips { display: flex; gap: 9px; flex-wrap: wrap; max-width: 80ch; }
 .noa-ci-chips span { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 7px 16px; font-size: 0.85rem; backdrop-filter: blur(10px); }
-.noa-ci-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-.noa-ci-btn { display: inline-flex; align-items: center; gap: 8px; background: rgba(12,18,30,0.5); border: 1px solid rgba(255,255,255,0.22); color: #fff; border-radius: 4px; padding: 13px 22px; font-family: var(--font-body); font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; backdrop-filter: blur(12px); transition: border-color 0.2s, background 0.2s; }
-.noa-ci-btn:hover { background: rgba(12,18,30,0.7); border-color: var(--a,#8bb6ff); }
+.noa-ci-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* DA alignée sur les boutons du mode cinématique d'Ousmane (/cine, CineView) :
+   plein accent avec glow + outline verre dépoli, coins 12px, casse normale */
+.noa-ci-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; border-radius: 12px; padding: 11px 20px;
+  font-family: var(--font-body); font-size: 0.875rem;
+  cursor: pointer; text-decoration: none; backdrop-filter: blur(12px);
+  transition: border-color 0.2s, background 0.2s, opacity 0.2s;
+}
+.noa-ci-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(139,182,255,0.5); }
+.noa-ci-btn--solid {
+  background: var(--accent, #8bb6ff); border-color: transparent; color: #002451;
+  font-family: var(--font-display); font-weight: 700;
+  box-shadow: 0 0 24px rgba(139,182,255,0.35);
+}
+.noa-ci-btn--solid:hover { background: var(--accent, #8bb6ff); border-color: transparent; opacity: 0.9; }
 .noa-ci-btn-ic { width: 17px; height: 17px; }
+/* Petit bouton rond social (Instagram), discret, même verre dépoli que les outline */
+.noa-ci-social-round {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; backdrop-filter: blur(12px);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.noa-ci-social-round svg { width: 19px; height: 19px; }
+.noa-ci-social-round:hover { border-color: rgba(139,182,255,0.5); transform: scale(1.06); }
 
 /* ===================== MODAL VIDÉOS ===================== */
 /* position:fixed + z-index 500 : passe AU-DESSUS du toggle de mode (z 400),

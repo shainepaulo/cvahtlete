@@ -50,12 +50,9 @@ export default function TarifsPage() {
               <li>Espace dédié multi-sport</li>
               <li>Accompagnement personnalisé</li>
             </ul>
-            <a
-              className="btn btn-ghost"
-              href="mailto:contact@athletecv.app?subject=Demande%20de%20devis%20%E2%80%94%20Offre%20Sur-mesure"
-            >
-              Demander un devis
-            </a>
+            <Link href="/offre-sur-mesure" className="btn btn-ghost">
+              Construire mon offre →
+            </Link>
           </div>
         </div>
 

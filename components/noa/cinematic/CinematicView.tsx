@@ -19,9 +19,9 @@ interface Props {
 
 /**
  * Mode Cinématique du CV de Noa — mise en scène plein écran (.noa-cine-wrap) :
- * galerie photo cliquable (fondu noir entre les photos), texte ancré en bas,
- * rail réseaux sociaux à gauche, actions (stats, CV complet, vidéos)
- * et panneau latéral stats & palmarès.
+ * galerie photo cliquable (fondu noir entre les photos) avec flèches de
+ * navigation, texte ancré en bas, actions (stats, CV complet, vidéos,
+ * Instagram) et panneau latéral stats & palmarès.
  * Namespace CSS "noa-ci-*" dédié : évite toute collision avec le mode
  * cinématique générique d'ATHLETE CV (/cine, classes "ci-*").
  */
@@ -52,12 +52,12 @@ export function CinematicView({ profile }: Props) {
   )
 
   /** Fondu noir : voile opaque → changement de photo → voile levé. */
-  function nextPhoto() {
+  function changePhoto(dir: 1 | -1) {
     if (fading) return
     setFading(true)
     fadeTimers.current.push(
       setTimeout(() => {
-        setPhotoIndex((i) => (i + 1) % photoCount)
+        setPhotoIndex((i) => (i + dir + photoCount) % photoCount)
         fadeTimers.current.push(setTimeout(() => setFading(false), 80))
       }, 380),
     )
@@ -71,7 +71,7 @@ export function CinematicView({ profile }: Props) {
       <button
         type="button"
         className="noa-ci-bg"
-        onClick={nextPhoto}
+        onClick={() => changePhoto(1)}
         aria-label="Photo suivante"
         style={{ border: 'none', padding: 0, cursor: 'pointer' }}
       >
@@ -84,20 +84,21 @@ export function CinematicView({ profile }: Props) {
         </span>
       </button>
 
-      <div className="noa-ci-socials">
-        {cinematic.socials.map((s) => (
-          <a
-            key={s.icon}
-            href={s.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={s.label}
-            title={s.label}
-          >
-            {SOCIAL_ICONS[s.icon]}
-          </a>
-        ))}
-      </div>
+      {/* Flèches de navigation visibles — complètent le clic sur la photo */}
+      {photoCount > 1 && (
+        <>
+          <button type="button" className="noa-ci-gal-nav prev" onClick={() => changePhoto(-1)} aria-label="Photo précédente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <polyline points="15,18 9,12 15,6" />
+            </svg>
+          </button>
+          <button type="button" className="noa-ci-gal-nav next" onClick={() => changePhoto(1)} aria-label="Photo suivante">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <polyline points="9,18 15,12 9,6" />
+            </svg>
+          </button>
+        </>
+      )}
 
       <div className="noa-ci-content">
         <div className="noa-ci-heading">
@@ -122,7 +123,9 @@ export function CinematicView({ profile }: Props) {
         </div>
 
         <div className="noa-ci-actions">
-          <button type="button" className="noa-ci-btn" onClick={() => setPanelOpen(true)}>
+          {/* Ordre et DA calqués sur les boutons d'Ousmane (/cine) : plein, outline,
+              outline, puis le rond Instagram discret (Noa n'a pas de compte X). */}
+          <button type="button" className="noa-ci-btn noa-ci-btn--solid" onClick={() => setPanelOpen(true)}>
             📊 Stats &amp; palmarès
           </button>
           <Link className="noa-ci-btn" href="/cv/noa/complet">
@@ -135,6 +138,19 @@ export function CinematicView({ profile }: Props) {
             </svg>
             Vidéos
           </button>
+          {cinematic.socials.map((s) => (
+            <a
+              key={s.icon}
+              className="noa-ci-social-round"
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={s.label}
+              title={s.label}
+            >
+              {SOCIAL_ICONS[s.icon]}
+            </a>
+          ))}
         </div>
       </div>
 

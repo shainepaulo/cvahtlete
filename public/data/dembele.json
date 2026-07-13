@@ -5,30 +5,36 @@
   "sport": "Football",
   "emoji": "⚽",
   "discipline": "Ailier · Attaquant",
-  "tagline": "Ballon d'Or 2025 — l'ailier qui a fait basculer la finale de Ligue des Champions.",
-  "bio": "À 29 ans, Ousmane Dembélé s'est imposé comme le meilleur joueur du monde. Sacré Ballon d'Or 2025 après une saison historique avec le Paris Saint-Germain — première Ligue des Champions du club, titre de Ligue 1 et Coupe de France — il a transformé sa vitesse foudroyante et son ambidextrie unique en arme décisive sur les plus grandes scènes. Champion du monde 2018, il incarne aujourd'hui le sommet du football mondial : un attaquant qui crée la différence quand tout se joue.",
+  "tagline": "Ballon d'Or 2025, double vainqueur de la Ligue des Champions — en pleine Coupe du Monde 2026 aux États-Unis.",
+  "bio": "À 29 ans, Ousmane Dembélé s'est imposé comme le meilleur joueur du monde. Sacré Ballon d'Or 2025 après une saison historique avec le Paris Saint-Germain — première Ligue des Champions du club, titre de Ligue 1 et Coupe de France — il a enchaîné avec un doublé européen en 2026, transformant sa vitesse foudroyante et son ambidextrie unique en arme décisive sur les plus grandes scènes. Champion du monde 2018, il dispute actuellement la Coupe du Monde 2026 aux États-Unis avec les Bleus : un attaquant qui crée la différence quand tout se joue.",
   "location": "Paris, France",
   "colors": { "a": "#c6f932", "b": "#5cf0c0" },
   "avatar": "images/3.webp",
   "verified": true,
+  "gallery": [
+    { "src": "/images/1.jpg", "alt": "Ousmane Dembélé en action", "position": "50% 20%" },
+    { "src": "/images/2.jpeg", "alt": "Ousmane Dembélé, célébration", "position": "50% 25%" },
+    { "src": "/images/4.avif", "alt": "Ousmane Dembélé sous le maillot du PSG", "position": "center 25%" }
+  ],
   "stats": [
     { "label": "Âge", "value": "29", "unit": "ans" },
     { "label": "Ballon d'Or", "value": "2025", "unit": "🏆" },
     { "label": "Sélections 🇫🇷", "value": "57", "unit": "" },
-    { "label": "Ligue des Champions", "value": "2025", "unit": "🏆" },
+    { "label": "Ligue des Champions", "value": "2×", "unit": "🏆" },
     { "label": "Valeur marchande", "value": "100", "unit": "M€" },
-    { "label": "Pied", "value": "Ambidextre", "unit": "" }
+    { "label": "Coupe du Monde 2026 🇺🇸", "value": "En cours", "unit": "" }
   ],
   "palmares": [
+    { "icon": "🇺🇸", "name": "Coupe du Monde 2026", "count": "En cours" },
     { "icon": "🏅", "name": "Ballon d'Or", "count": "2025" },
-    { "icon": "🏆", "name": "Ligue des Champions", "count": "1×" },
+    { "icon": "🏆", "name": "Ligue des Champions", "count": "2×" },
     { "icon": "🏆", "name": "Coupe du Monde", "count": "1×" },
     { "icon": "🏆", "name": "Ligue des Nations", "count": "1×" },
     { "icon": "🏆", "name": "La Liga", "count": "2×" },
     { "icon": "🏆", "name": "Ligue 1", "count": "4×" }
   ],
   "career": [
-    { "year": "2023 —", "club": "Paris Saint-Germain", "detail": "Ballon d'Or · C1 2025" },
+    { "year": "2023 —", "club": "Paris Saint-Germain", "detail": "Ballon d'Or · 2× C1 (2025, 2026)" },
     { "year": "2017-23", "club": "FC Barcelone", "detail": "2× La Liga" },
     { "year": "2016-17", "club": "Borussia Dortmund", "detail": "35 M€" },
     { "year": "2015-16", "club": "Stade Rennais", "detail": "Formation" }

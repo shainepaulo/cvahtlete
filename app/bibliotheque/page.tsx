@@ -3,17 +3,16 @@ import Link from 'next/link'
 import { listPublicCvs } from '@/app/actions/cv'
 
 export const metadata: Metadata = {
-  title: 'Bibliothèque — ATHLETE CV',
+  title: 'Nos Athletes — ATHLETE CV',
   description: 'Tous les répertoires publics ATHLETE CV, en un seul endroit.',
 }
 
 /**
- * Vitrines maison : profils démo hors du modèle CV Supabase (pas de ligne
- * `cvs`, pas de toggle admin dynamique), affichées séparément de la
- * Bibliothèque des utilisateurs — voir Tâche 4.
+ * Vitrines maison : vrais profils publics hors du modèle CV Supabase (pas de
+ * ligne `cvs`, pas de toggle admin dynamique). Le profil démo Ousmane Dembélé
+ * n'apparaît pas ici — il reste accessible via l'accueil et la page exemple.
  */
 const SHOWCASES = [
-  { href: '/profil?a=dembele', name: 'Ousmane Dembélé', sport: '⚽ Football', tagline: 'Ballon d’Or 2025 · Paris SG' },
   { href: '/cv/noa', name: 'Noa Muller', sport: '🧤 Football', tagline: 'Gardien international · Coupes du Monde U17 & U20' },
 ]
 
@@ -24,7 +23,7 @@ export default async function BibliothequePage() {
   return (
     <section className="section" style={{ paddingTop: 'calc(var(--nav-h) + 90px)' }}>
       <div className="container">
-        <span className="tag reveal">Bibliothèque</span>
+        <span className="tag reveal">Nos Athletes</span>
         <h2 className="title reveal" data-delay="1">
           Tous les répertoires<br />publics.
         </h2>

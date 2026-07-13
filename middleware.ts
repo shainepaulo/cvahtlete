@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Routes nécessitant une session.
-const PRIVATE = ["/dashboard", "/builder"];
+// Routes nécessitant une session. /checkout inclus : impossible d'atteindre le
+// paiement sans compte — l'utilisateur non connecté est renvoyé vers /login
+// (lien « Créer un compte » avec ?next= préservé).
+const PRIVATE = ["/dashboard", "/builder", "/checkout"];
 // Routes réservées au rôle owner (godpower).
 const OWNER_ONLY = ["/admin"];
 // Pages d'auth : si déjà connecté, on n'y revient pas.
@@ -59,10 +61,13 @@ export async function middleware(request: NextRequest) {
   let profileStatus: string | null = null;
 
   // 1) Non connecté sur une route protégée => /login?next=…
+  //    Exception tunnel d'achat : /checkout sans session => /signup (inscription
+  //    obligatoire avant paiement), le pack choisi est préservé via ?next=.
   if (!user && (isPrivate || isOwnerOnly)) {
     const to = request.nextUrl.clone();
-    to.pathname = "/login";
-    to.search = `?next=${encodeURIComponent(path)}`;
+    to.pathname = startsWith(path, ["/checkout"]) ? "/signup" : "/login";
+    const fullPath = path + (request.nextUrl.search || "");
+    to.search = `?next=${encodeURIComponent(fullPath)}`;
     return NextResponse.redirect(to);
   }
 

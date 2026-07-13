@@ -14,24 +14,24 @@ const AUDIENCES = [
   {
     ic: '🤝',
     t: 'Aux sponsors',
-    d: 'Une vitrine qui chiffre ta valeur. Tu inspires confiance avant même le premier rendez-vous.',
+    d: 'Ta valeur, chiffrée et prouvée : audience, stats, palmarès. Le sponsor voit son retour avant même le premier rendez-vous.',
   },
   {
     ic: '🏟️',
     t: 'Aux clubs & agents',
-    d: 'Tout ton dossier sportif à jour, prêt à convaincre. Fini les PDF lourds qui finissent ignorés.',
+    d: 'Un recruteur décide en 90 secondes. Donne-lui tout : stats vérifiables, vidéos, parcours — zéro PDF à télécharger.',
   },
   {
     ic: '🔗',
     t: 'En bio Instagram',
-    d: 'Un lien propre dans ta bio. Recruteurs et fans accèdent à tout ton profil en un seul tap.',
+    d: 'Chaque visite de ton profil peut devenir une opportunité. Un lien propre en bio, et ton talent travaille pour toi 24h/24.',
   },
 ]
 
 const STEPS = [
-  { n: '01', t: 'Crée ton profil', d: 'Stats, palmarès, parcours, vidéos. Notre builder te guide section par section.' },
-  { n: '02', t: 'Personnalise', d: 'Photo, couleurs, ordre des blocs. Ton univers, ta discipline, ton identité.' },
-  { n: '03', t: 'Partage le lien', d: 'Un seul lien à envoyer ou mettre en bio. À jour en permanence, jamais périmé.' },
+  { n: '01', t: 'Crée ton profil', d: 'Stats, palmarès, parcours, vidéos. Le builder te guide section par section — rien à inventer, tout à montrer.' },
+  { n: '02', t: 'Personnalise', d: 'Photo, couleurs, mode cinématique. Ton univers, ta discipline, ton identité — pas un template anonyme.' },
+  { n: '03', t: 'Partage le lien', d: 'Un seul lien, partout : DM, bio, e-mail d’agent. Toujours à jour, jamais périmé, jamais ignoré.' },
 ]
 
 export default function HomePage() {
@@ -61,8 +61,8 @@ export default function HomePage() {
             <span className="grad">te fait signer.</span>
           </h1>
           <p className="lead reveal" data-delay="2">
-            Stats, palmarès et moments forts réunis sur une page d&apos;élite. À envoyer aux clubs,
-            aux agents, aux sponsors. Un seul lien — toujours à jour.
+            Les clubs, agents et sponsors ne lisent plus les PDF. Ils cliquent.
+            Stats, palmarès et moments forts sur une page d&apos;élite — un seul lien, toujours à jour.
           </p>
           <div className="hero-actions reveal" data-delay="3">
             <Link href="/tarifs" className="btn btn-primary btn-lg">Créer mon profil</Link>
@@ -85,15 +85,15 @@ export default function HomePage() {
           <div className="metrics reveal">
             <div className="metric">
               <div className="v"><span className="count" data-to="1">1</span> lien</div>
-              <div className="l">Tout ton profil, zéro dossier</div>
+              <div className="l">Tout ton dossier sportif, zéro pièce jointe</div>
             </div>
             <div className="metric">
               <div className="v"><span className="count" data-to="40">40</span> sec</div>
-              <div className="l">Pour le partager où ça compte</div>
+              <div className="l">Pour le mettre entre les bonnes mains</div>
             </div>
             <div className="metric">
               <div className="v"><span className="count" data-to="100">100</span>% à jour</div>
-              <div className="l">Modifie une fois, partout corrigé</div>
+              <div className="l">Un but marqué, une ligne ajoutée — partout</div>
             </div>
           </div>
         </div>
@@ -128,9 +128,9 @@ export default function HomePage() {
             Fini les PDF dépassés<br />et les DM brouillons.
           </h2>
           <p className="lead-2 reveal" data-delay="2">
-            Ton talent mérite mieux qu&apos;un fichier oublié dans une boîte mail. ATHLETE CV
-            transforme ton parcours en une vitrine vivante : stats, palmarès, vidéos et contact,
-            réunis et toujours actuels.
+            Chaque saison, des talents passent sous les radars à cause d&apos;un dossier illisible.
+            Pas toi. ATHLETE CV transforme ton parcours en vitrine vivante : stats, palmarès,
+            vidéos et contact — réunis, actuels, impossibles à ignorer.
           </p>
         </div>
       </section>
@@ -157,22 +157,48 @@ export default function HomePage() {
         <div className="container">
           <span className="tag reveal">Vu en vrai</span>
           <h2 className="title reveal" data-delay="1">À quoi ça ressemble.</h2>
-          <Link className="showcase reveal" data-delay="2" href="/profil?a=dembele">
-            <div className="showcase-media">
-              <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
-              <span className="showcase-emoji">⚽</span>
-            </div>
-            <div className="showcase-body">
-              <span className="showcase-badge">🏅 Ballon d&apos;Or 2025</span>
-              <div className="showcase-name">Ousmane Dembélé</div>
-              <div className="showcase-sport">⚽ Football · Ailier · Paris SG</div>
-              <div className="showcase-stats">
-                <div><div className="v count" data-to="57">57</div><div className="l">Sélections 🇫🇷</div></div>
-                <div><div className="v">100M€</div><div className="l">Valeur</div></div>
+          <div className="showcase reveal" data-delay="2">
+            {/* Ruban frère du lien profil, jamais imbriqué — pas de <a> dans <a> (même pattern que /exemples) */}
+            <a className="cine-ribbon" href="/cine?u=dembele">
+              <span className="cine-ribbon-dot" />
+              🎬 Mode cinématique
+            </a>
+            <Link className="showcase-link-wrap" href="/profil?a=dembele">
+              <div className="showcase-media">
+                <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
+                <span className="showcase-emoji">⚽</span>
               </div>
-              <span className="showcase-link">Explorer le profil →</span>
-            </div>
-          </Link>
+              <div className="showcase-body">
+                <span className="showcase-badge">🏅 Ballon d&apos;Or 2025</span>
+                <div className="showcase-name">Ousmane Dembélé</div>
+                <div className="showcase-sport">⚽ Football · Ailier · Paris SG</div>
+                <div className="showcase-stats">
+                  <div><div className="v count" data-to="57">57</div><div className="l">Sélections 🇫🇷</div></div>
+                  <div><div className="v">100M€</div><div className="l">Valeur</div></div>
+                </div>
+                <span className="showcase-link">Explorer le profil →</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== CLUBS · AGENTS · SPONSORS ===================== */}
+      <section className="section center">
+        <div className="container">
+          <span className="tag reveal">Vous recrutez ou sponsorisez ?</span>
+          <h2 className="title reveal" data-delay="1">
+            Clubs, agents, sponsors :<br />décidez sur des faits.
+          </h2>
+          <p className="lead-2 reveal" data-delay="2">
+            Un lien s&apos;ouvre, tout est là : stats vérifiables, vidéos, parcours, contact direct.
+            Évaluez un profil en 90 secondes au lieu de courir après des PDF.
+            Vous gérez une flotte de talents&nbsp;? On construit votre espace dédié.
+          </p>
+          <div className="hero-actions reveal" data-delay="3" style={{ marginTop: 30 }}>
+            <Link href="/offre-sur-mesure" className="btn btn-primary btn-lg">Parler à l&apos;équipe</Link>
+            <Link href="/bibliotheque" className="btn btn-ghost btn-lg">Parcourir les profils publics</Link>
+          </div>
         </div>
       </section>
 
@@ -180,7 +206,10 @@ export default function HomePage() {
       <section className="section center">
         <div className="container reveal">
           <h2 className="title">Ton prochain contrat<br />commence par un lien.</h2>
-          <p className="lead-2">Crée ton profil aujourd&apos;hui. Partage-le avant ton prochain match.</p>
+          <p className="lead-2">
+            Pendant que tu hésites, un autre profil circule déjà dans les DM des recruteurs.
+            Crée le tien aujourd&apos;hui — partage-le avant ton prochain match.
+          </p>
           <div className="hero-actions" style={{ marginTop: 36 }}>
             <Link href="/tarifs" className="btn btn-primary btn-lg">Créer mon profil</Link>
             <Link href="/exemples" className="btn btn-ghost btn-lg">Voir l&apos;exemple</Link>

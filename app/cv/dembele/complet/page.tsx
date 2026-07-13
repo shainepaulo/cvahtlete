@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, Montserrat } from 'next/font/google'
 import { CvCompletView } from '@/components/noa/complet/CvCompletView'
-import { noaProfile } from '@/data/noa'
+import { dembeleCompletProfile } from '@/data/dembele'
 import { getViewerContext } from '@/app/actions/viewer'
 
 const playfair = Playfair_Display({
@@ -19,19 +19,19 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: 'Noa Muller — CV Joueur · ATHLETE CV',
-  description: 'CV complet de Noa Muller, gardien de but international.',
+  title: 'Ousmane Dembélé — CV Joueur · ATHLETE CV',
+  description: "CV complet d'Ousmane Dembélé, ailier du Paris Saint-Germain (démo ATHLETE CV).",
 }
 
-/** Route /cv/noa/complet : le CV complet (interface info.html d'ATHLETE CV). */
-export default async function NoaCvCompletPage() {
+/** Route /cv/dembele/complet : CV complet de la vitrine démo (impression PDF thémée). */
+export default async function DembeleCvCompletPage() {
   const { adminForceMask, isAdminViewer } = await getViewerContext()
   return (
     <div className={`${playfair.variable} ${montserrat.variable}`}>
       <CvCompletView
-        profile={noaProfile}
-        backHref="/cv/noa"
-        cvSlug="noa"
+        profile={dembeleCompletProfile}
+        backHref="/profil?a=dembele"
+        cvSlug="dembele"
         adminForceMask={adminForceMask}
         isAdminViewer={isAdminViewer}
       />

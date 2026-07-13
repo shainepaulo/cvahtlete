@@ -2,22 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import type { NoaProfile } from '@/types/noa'
+import type { CvCompletProfile } from '@/types/noa'
 import { BlurValue } from '@/components/privacy/BlurValue'
 import './cv-complet.css'
 
 interface Props {
-  profile: NoaProfile
+  profile: CvCompletProfile
+  /** Cible du lien Retour, ex. '/cv/noa' ou '/profil?a=dembele'. */
+  backHref: string
+  /** Slug transmis à BlurValue (journalisation des demandes d'accès). */
+  cvSlug: string
   adminForceMask: boolean
   isAdminViewer: boolean
 }
 
 /**
  * CV complet — portage React de l'interface info.html d'ATHLETE CV
- * (https://athlete-cv.vercel.app/info.html?a=bolt) alimentée par les
- * données de Noa. « Imprimer » ouvre le PDF officiel du dossier.
+ * (https://athlete-cv.vercel.app/info.html?a=bolt), partagé par tous les
+ * joueurs. « Imprimer » ouvre le PDF officiel si `complet.pdfUrl` est fourni
+ * (exception Noa) ; sinon impression navigateur thémée (@media print).
  */
-export function CvCompletView({ profile, adminForceMask, isAdminViewer }: Props) {
+export function CvCompletView({ profile, backHref, cvSlug, adminForceMask, isAdminViewer }: Props) {
   const { identity, complet } = profile
   const [activePhoto, setActivePhoto] = useState<1 | 2>(1)
   const [toast, setToast] = useState(false)
@@ -71,7 +76,7 @@ export function CvCompletView({ profile, adminForceMask, isAdminViewer }: Props)
   return (
     <div className="cvc-page">
       <nav className="nav-bar">
-        <Link href="/cv/noa" className="back-link">
+        <Link href={backHref} className="back-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="15,18 9,12 15,6" />
           </svg>
@@ -138,7 +143,7 @@ export function CvCompletView({ profile, adminForceMask, isAdminViewer }: Props)
                         sensitive={!!sensitive}
                         forceVisible={forceVisible}
                         fieldLabel={c.label}
-                        cvSlug="noa"
+                        cvSlug={cvSlug}
                       />
                     </div>
                   </div>
@@ -246,12 +251,24 @@ export function CvCompletView({ profile, adminForceMask, isAdminViewer }: Props)
             <p className="footer-date">Dernière mise à jour : {complet.lastUpdate}</p>
           </div>
           <div className="footer-actions">
-            <a className="action-btn print" href={complet.pdfUrl} target="_blank" rel="noopener noreferrer">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
-              </svg>
-              Imprimer
-            </a>
+            {complet.pdfUrl ? (
+              /* PDF officiel importé (exception Noa) : on l'ouvre tel quel */
+              <a className="action-btn print" href={complet.pdfUrl} target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
+                </svg>
+                Imprimer
+              </a>
+            ) : (
+              /* Pas de PDF importé (Dembélé et tous les futurs joueurs) :
+                 impression navigateur → PDF thémé ATHLETE CV via @media print */
+              <button type="button" className="action-btn print" onClick={() => window.print()}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
+                </svg>
+                Imprimer
+              </button>
+            )}
             <button className="action-btn share" onClick={share}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="18" cy="5" r="3" />

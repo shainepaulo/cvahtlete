@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { signOut } from '@/app/actions/auth'
+import { TrialBanner } from '@/components/billing/TrialBanner'
 
 const PLAN_LABEL: Record<string, string> = {
   free: 'Aucune offre',
@@ -17,9 +18,10 @@ export default async function DashboardPage() {
   // Défense en profondeur (le middleware protège déjà /dashboard).
   if (!user) redirect('/login?next=/dashboard')
 
-  const [{ data: profile }, { data: cv }] = await Promise.all([
+  const [{ data: profile }, { data: cv }, { data: sub }] = await Promise.all([
     supabase.from('profiles').select('full_name, email, is_owner, is_super_admin, plan, account_status').eq('id', user.id).single(),
     supabase.from('cvs').select('slug, visibility').eq('user_id', user.id).maybeSingle(),
+    supabase.from('subscriptions').select('status, trial_ends_at').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (profile?.account_status && profile.account_status !== 'active') redirect('/login?error=inactive')
@@ -45,6 +47,10 @@ export default async function DashboardPage() {
           ) : null}
         </p>
       </div>
+
+      {sub?.status === 'trialing' && sub.trial_ends_at && (
+        <TrialBanner trialEndsAt={sub.trial_ends_at} amountEuros={79} />
+      )}
 
       <div className="dash-grid">
         <div className="dash-plan">

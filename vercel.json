@@ -4,5 +4,11 @@
       "source": "/(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/capture-trials",
+      "schedule": "0 * * * *"
+    }
   ]
 }

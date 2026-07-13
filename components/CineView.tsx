@@ -1,47 +1,31 @@
 "use client";
 
 /**
- * CineView — Mode cinématique 3D immersif (offre Pro/Club).
+ * CineView — Mode cinématique immersif (offre Pro/Club).
  *
- * Fichier UNIQUE : scène Three.js (fiber/drei) + overlays Framer Motion.
+ * Mise en scène photo plein écran, calquée sur le mode cinématique de Noa
+ * (galerie cliquable, fondu noir entre les images, flèches de navigation,
+ * scrim de lisibilité), avec les overlays Framer Motion d'ATHLETE CV.
+ * L'ancienne scène 3D Three.js (particules/« galaxie ») a été retirée :
+ * fond photo net, ou dégradés de la charte si aucune image n'est fournie.
  *
- * INTÉGRATION (le Canvas WebGL ne doit jamais être rendu côté serveur) :
+ * INTÉGRATION :
  *   const CineView = dynamic(() => import("@/components/CineView"), { ssr: false });
  *   <CineView cv={cv} cinematic={ownerEntitlements.cinematic} />
  *
- * PERFORMANCE (contrainte dure : zéro lag, tout appareil) :
- *   - dpr plafonné [1, 1.5], réduit à 1 si le GPU décroche (PerformanceMonitor)
- *   - rendu coupé (frameloop "never") onglet caché ou composant hors écran
- *   - prefers-reduced-motion : scène statique, overlays sans animation
- *   - fallback CSS pur si WebGL indisponible (vieux mobiles, webviews)
- *   - particules adaptées à la machine (350 bas de gamme / 900 desktop)
- *
- * MÉMOIRE : géométries, matériaux et textures créés ici sont explicitement
- * disposés au démontage (useEffect cleanup) — aucun résidu GPU.
- *
- * SÉCURITÉ AFFICHAGE : les JSONB (stats, palmares, career, links, colors)
- * sont re-validés à l'entrée : textes bornés sans caractères de contrôle
- * (React échappe le HTML), URLs https uniquement, couleurs hex strictes
- * (seules valeurs injectées dans des styles inline).
+ * SÉCURITÉ AFFICHAGE : les JSONB (stats, palmares, career, links, colors,
+ * gallery) sont re-validés à l'entrée : textes bornés sans caractères de
+ * contrôle (React échappe le HTML), URLs https ou chemins locaux uniquement,
+ * couleurs hex strictes (seules valeurs injectées dans des styles inline).
  */
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type MutableRefObject,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { PerformanceMonitor } from "@react-three/drei";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CvData } from "@/app/actions/cv";
 
 // ===========================================================================
-// 1. CHARTE — Tomorrow Night Blue (exclusif pour lumières & particules)
+// 1. CHARTE — Tomorrow Night Blue
 // ===========================================================================
 
 const BRAND = {
@@ -134,210 +118,30 @@ function parseLinks(raw: unknown): CineLink[] {
   });
 }
 
+interface CineGalleryPhoto { src: string; alt: string; position: string }
+
+/** Galerie de fond : chemins locaux (/images/...) ou https uniquement. */
+function parseGallery(raw: unknown): CineGalleryPhoto[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 8).flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const local = typeof item.src === "string" && item.src.startsWith("/") && !item.src.startsWith("//");
+    const src = local ? (item.src as string) : toSafeHttpsUrl(item.src) ?? "";
+    if (!src) return [];
+    return [{
+      src,
+      alt: toSafeText(item.alt, 120),
+      position: toSafeText(item.position, 24) || "center",
+    }];
+  });
+}
+
 // ===========================================================================
-// 3. SCÈNE 3D — particules, beacons, grille, parallaxe
+// 3. FOND — photo plein écran ou dégradés de la charte
 // ===========================================================================
 
-type PointerRef = MutableRefObject<{ x: number; y: number }>;
-
-/** Nuage de particules additives bleu pastel <-> vert néon. */
-function Particles({
-  count,
-  animate,
-  pointer,
-}: {
-  count: number;
-  animate: boolean;
-  pointer: PointerRef;
-}) {
-  const points = useRef<THREE.Points>(null);
-
-  const [positions, colors] = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const blue = new THREE.Color(BRAND.blue);
-    const green = new THREE.Color(BRAND.green);
-    const c = new THREE.Color();
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 26;
-      pos[i * 3 + 1] = Math.random() * 11 - 3;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 26;
-      c.copy(blue).lerp(green, Math.random());
-      col[i * 3] = c.r;
-      col[i * 3 + 1] = c.g;
-      col[i * 3 + 2] = c.b;
-    }
-    return [pos, col] as const;
-  }, [count]);
-
-  // Nettoyage mémoire explicite : géométrie + matériau disposés au démontage.
-  useEffect(() => {
-    const obj = points.current;
-    return () => {
-      obj?.geometry.dispose();
-      (obj?.material as THREE.Material | undefined)?.dispose();
-    };
-  }, []);
-
-  useFrame((_, delta) => {
-    const obj = points.current;
-    if (!obj || !animate) return;
-    obj.rotation.y += delta * 0.02; // dérive lente
-    obj.rotation.x = THREE.MathUtils.lerp(obj.rotation.x, pointer.current.y * 0.05, 0.04);
-    obj.rotation.z = THREE.MathUtils.lerp(obj.rotation.z, pointer.current.x * 0.04, 0.04);
-  });
-
-  return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.055}
-        sizeAttenuation
-        vertexColors
-        transparent
-        opacity={0.85}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
-}
-
-/** Texture halo radiale générée en mémoire (aucun asset à charger). */
-function makeHaloTexture(hex: string): THREE.CanvasTexture | null {
-  if (typeof document === "undefined") return null;
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  const c = new THREE.Color(hex);
-  const rgb = `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)}`;
-  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  grad.addColorStop(0, `rgba(${rgb},0.9)`);
-  grad.addColorStop(0.35, `rgba(${rgb},0.35)`);
-  grad.addColorStop(1, `rgba(${rgb},0)`);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
-  return new THREE.CanvasTexture(canvas);
-}
-
-/** Beacon : halo volumétrique simulé (sprite additif) qui flotte lentement. */
-function Beacon({
-  color,
-  position,
-  scale,
-  speed,
-  animate,
-}: {
-  color: string;
-  position: [number, number, number];
-  scale: number;
-  speed: number;
-  animate: boolean;
-}) {
-  const sprite = useRef<THREE.Sprite>(null);
-  const texture = useMemo(() => makeHaloTexture(color), [color]);
-
-  // Disposal texture + matériau : zéro résidu GPU.
-  useEffect(() => {
-    const obj = sprite.current;
-    return () => {
-      texture?.dispose();
-      (obj?.material as THREE.Material | undefined)?.dispose();
-    };
-  }, [texture]);
-
-  useFrame((state) => {
-    const obj = sprite.current;
-    if (!obj || !animate) return;
-    obj.position.y = position[1] + Math.sin(state.clock.elapsedTime * speed) * 0.4;
-  });
-
-  if (!texture) return null;
-  return (
-    <sprite ref={sprite} position={position} scale={[scale, scale, 1]}>
-      <spriteMaterial
-        map={texture}
-        transparent
-        opacity={0.5}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </sprite>
-  );
-}
-
-/** Grille-sol abstraite qui défile lentement (effet "piste infinie"). */
-function Floor({ animate }: { animate: boolean }) {
-  const grid = useMemo(() => {
-    const g = new THREE.GridHelper(90, 64, new THREE.Color(BRAND.blue), new THREE.Color(BRAND.blue));
-    const mat = g.material as THREE.LineBasicMaterial;
-    mat.transparent = true;
-    mat.opacity = 0.13;
-    mat.depthWrite = false;
-    return g;
-  }, []);
-
-  useEffect(
-    () => () => {
-      grid.geometry.dispose();
-      (grid.material as THREE.Material).dispose();
-    },
-    [grid]
-  );
-
-  const cell = (90 / 64) * 2;
-  useFrame((_, delta) => {
-    if (animate) grid.position.z = (grid.position.z + delta * 0.45) % cell;
-  });
-
-  return <primitive object={grid} position={[0, -2.4, 0]} />;
-}
-
-/** Parallaxe caméra : suit subtilement la souris (lerp amorti). */
-function CameraRig({ pointer, enabled }: { pointer: PointerRef; enabled: boolean }) {
-  useFrame(({ camera }) => {
-    if (!enabled) return;
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, pointer.current.x * 0.7, 0.04);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0.4 - pointer.current.y * 0.4, 0.04);
-    camera.lookAt(0, 0.2, 0);
-  });
-  return null;
-}
-
-function CineScene({
-  particleCount,
-  animate,
-  pointer,
-}: {
-  particleCount: number;
-  animate: boolean;
-  pointer: PointerRef;
-}) {
-  return (
-    <>
-      <color attach="background" args={[BRAND.bg]} />
-      <fog attach="fog" args={[BRAND.bg, 9, 30]} />
-      <ambientLight intensity={0.45} color={BRAND.blue} />
-      <pointLight position={[6, 4, -6]} intensity={1.4} color={BRAND.blue} distance={30} decay={2} />
-      <pointLight position={[-7, 2, -4]} intensity={1.1} color={BRAND.green} distance={26} decay={2} />
-      <Particles key={particleCount} count={particleCount} animate={animate} pointer={pointer} />
-      <Floor animate={animate} />
-      <Beacon color={BRAND.blue} position={[-4.4, 0.6, -6]} scale={7} speed={0.5} animate={animate} />
-      <Beacon color={BRAND.green} position={[4.8, 1.4, -8]} scale={9} speed={0.34} animate={animate} />
-      <Beacon color={BRAND.blue} position={[0, 2.8, -12]} scale={12} speed={0.22} animate={animate} />
-      <CameraRig pointer={pointer} enabled={animate} />
-    </>
-  );
-}
-
-/** Fallback sans WebGL : mêmes codes couleurs, halos CSS statiques. */
-function FallbackBackdrop() {
+/** Fond sans photo : halos de la charte, sobres et propres (aucun WebGL). */
+function GradientBackdrop() {
   return (
     <div
       aria-hidden
@@ -354,7 +158,7 @@ function FallbackBackdrop() {
 }
 
 // ===========================================================================
-// 4. COMPOSANT PRINCIPAL — scène + overlays Framer Motion
+// 4. COMPOSANT PRINCIPAL — photo + overlays Framer Motion
 // ===========================================================================
 
 const containerVariants = {
@@ -379,9 +183,15 @@ export interface CineViewProps {
   cinematic: boolean;
   /** Accroche optionnelle (colonne dédiée prévue en migration 00002). */
   tagline?: string;
+  /** Galerie photo de fond (JSON démo ou cine_bg_url). */
+  gallery?: unknown;
+  /** Cible du bouton « CV complet » (démos : route dédiée ; défaut : /slug). */
+  completHref?: string;
+  /** Cible de l'encoche « Mode Classique » (même logique que le CV de Noa). */
+  classicHref?: string;
 }
 
-export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
+export default function CineView({ cv, cinematic, tagline, gallery, completHref, classicHref }: CineViewProps) {
   // ---- Données : tout passe au filet avant affichage ----------------------
   const data = useMemo(() => {
     const colors = isRecord(cv.colors) ? cv.colors : {};
@@ -397,76 +207,59 @@ export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
       palmares: parsePalmares(cv.palmares),
       career: parseCareer(cv.career),
       links: parseLinks(cv.links),
+      gallery: parseGallery(gallery),
     };
-  }, [cv, tagline]);
+  }, [cv, tagline, gallery]);
 
-  // ---- Capacités machine & cycle de vie du rendu --------------------------
   const reducedMotion = useReducedMotion() ?? false;
-  const [webgl, setWebgl] = useState<"checking" | "yes" | "no">("checking");
-  const [tabVisible, setTabVisible] = useState(true);
-  const [onScreen, setOnScreen] = useState(true);
-  const [dpr, setDpr] = useState(1.5);
   const [panelOpen, setPanelOpen] = useState(false);
-  const pointer = useRef({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    try {
-      const c = document.createElement("canvas");
-      setWebgl(c.getContext("webgl2") || c.getContext("webgl") ? "yes" : "no");
-    } catch {
-      setWebgl("no");
-    }
-  }, []);
+  // ---- Galerie photo de fond : fondu noir entre les images (pattern Noa) --
+  const photos = data.gallery;
+  const hasGallery = photos.length > 0;
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [fading, setFading] = useState(false);
+  const fadeTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
-  // Onglet caché => rendu coupé (économie batterie/CPU).
+  // Préchargement : évite le flash blanc au premier changement de photo.
   useEffect(() => {
-    const onVis = () => setTabVisible(document.visibilityState === "visible");
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+    photos.forEach((p) => {
+      const img = new Image();
+      img.src = p.src;
+    });
+  }, [photos]);
 
-  // Composant hors écran => rendu coupé.
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => setOnScreen(entry.isIntersecting),
-      { threshold: 0.05 }
+  useEffect(
+    () => () => {
+      fadeTimers.current.forEach(clearTimeout);
+    },
+    []
+  );
+
+  /** Voile noir opaque → changement de photo → voile levé. */
+  function changePhoto(dir: 1 | -1) {
+    if (fading || photos.length < 2) return;
+    setFading(true);
+    fadeTimers.current.push(
+      setTimeout(() => {
+        setPhotoIndex((i) => (i + dir + photos.length) % photos.length);
+        fadeTimers.current.push(setTimeout(() => setFading(false), 80));
+      }, 380)
     );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Heuristique bas de gamme : moins de particules.
-  const lowEnd = useMemo(() => {
-    if (typeof navigator === "undefined") return true;
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    return (nav.hardwareConcurrency ?? 4) <= 4 || (nav.deviceMemory ?? 8) <= 4;
-  }, []);
-
-  const animate = !reducedMotion && tabVisible && onScreen;
-  const particleCount = lowEnd ? 350 : 900;
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
-    pointer.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.current.y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-  };
+  }
 
   // ---- Verrou premium : le booléen vient du SERVEUR (entitlements RLS) ----
   if (!cinematic) {
     return (
       <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-bg px-6">
-        <FallbackBackdrop />
+        <GradientBackdrop />
         <div className="relative z-10 max-w-md rounded-3xl border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl">
           <h1 className="font-display text-2xl font-bold text-text-main">
             Mode cinématique 🎬
           </h1>
           <p className="font-body mt-3 text-text-muted">
             Ce CV n&apos;a pas l&apos;option cinématique — réservée à
-            l&apos;offre Pro (149&nbsp;€, paiement unique).
+            l&apos;offre Pro (79&nbsp;€, paiement unique).
           </p>
           <Link
             href="/tarifs"
@@ -483,42 +276,63 @@ export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
     data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0;
 
   return (
-    <div
-      ref={containerRef}
-      onPointerMove={onPointerMove}
-      className="relative min-h-screen overflow-hidden bg-brand-bg text-text-main"
-    >
-      {/* ---- Couche 3D ------------------------------------------------------ */}
-      {webgl === "yes" ? (
-        <div className="absolute inset-0">
-          <Canvas
-            frameloop={animate ? "always" : "never"}
-            dpr={[1, dpr]}
-            camera={{ position: [0, 0.4, 9], fov: 50 }}
-            gl={{ antialias: false, alpha: false, powerPreference: "low-power" }}
-          >
-            {/* Si le GPU décroche, on retombe à dpr 1 sans jamais saccader */}
-            <PerformanceMonitor onDecline={() => setDpr(1)} />
-            <CineScene particleCount={particleCount} animate={animate} pointer={pointer} />
-          </Canvas>
-        </div>
-      ) : (
-        <FallbackBackdrop />
+    <div className="relative min-h-screen overflow-hidden bg-brand-bg text-text-main">
+      {/* ---- Encoche Classique / Cinématique (même logique que le CV de Noa) -- */}
+      {classicHref && (
+        <nav className="cv-mode-switch" aria-label="Mode de visualisation">
+          <Link href={classicHref}>📄 Classique</Link>
+          <span className="on" aria-current="page">🎬 Cinématique</span>
+        </nav>
       )}
 
-      {/* Scrim bas : garantit la lisibilité du texte sur la scène */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
-        style={{ background: `linear-gradient(to top, ${BRAND.bg}e6, transparent)` }}
-      />
+      {/* ---- Fond : photo plein écran (comme Noa) ou dégradés de la charte -- */}
+      {hasGallery ? (
+        <div aria-hidden className="absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={(photos[photoIndex] ?? photos[0]).src}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{
+              objectPosition: (photos[photoIndex] ?? photos[0]).position,
+              filter: "brightness(.92) contrast(1.06)",
+            }}
+          />
+          {/* Scrim : garantit la lisibilité du texte sur la photo */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(0deg, rgba(0,12,28,.95) 0%, rgba(0,12,28,.55) 32%, rgba(0,12,28,.05) 62%, transparent 100%), radial-gradient(ellipse 130% 90% at 50% 100%, rgba(0,0,0,.45) 0%, transparent 60%)",
+            }}
+          />
+          {/* Voile de fondu noir entre deux photos */}
+          <div
+            className={`pointer-events-none absolute inset-0 bg-black transition-opacity duration-[380ms] ${fading ? "opacity-100" : "opacity-0"}`}
+          />
+        </div>
+      ) : (
+        <GradientBackdrop />
+      )}
+
+      {/* Clic n'importe où sur l'interface = photo suivante (pattern Noa) */}
+      {photos.length > 1 && (
+        <button
+          type="button"
+          onClick={() => changePhoto(1)}
+          aria-label="Photo suivante"
+          className="absolute inset-0 z-[5] cursor-pointer border-0 bg-transparent"
+        />
+      )}
 
       {/* ---- Overlays 2D (Framer Motion) ------------------------------------ */}
+      {/* pointer-events-none : les clics traversent le texte jusqu'à la galerie ;
+          seule la rangée de boutons (pointer-events-auto) reste interactive */}
       <motion.section
         variants={containerVariants}
         initial={reducedMotion ? false : "hidden"}
         animate="show"
-        className="relative z-10 flex min-h-screen flex-col justify-end p-6 pb-10 sm:p-12"
+        className="pointer-events-none relative z-10 flex min-h-screen flex-col justify-end p-6 pb-10 sm:p-12"
       >
         <motion.h1
           variants={itemVariants}
@@ -560,7 +374,7 @@ export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
           </motion.p>
         )}
 
-        <motion.div variants={itemVariants} className="mt-8 flex flex-wrap gap-3">
+        <motion.div variants={itemVariants} className="pointer-events-auto mt-8 flex flex-wrap gap-3">
           {hasDetails && (
             <button
               type="button"
@@ -571,7 +385,7 @@ export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
             </button>
           )}
           <Link
-            href={`/${cv.slug}`}
+            href={completHref ?? `/${cv.slug}`}
             className="font-body rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm backdrop-blur-md transition hover:border-accent/50"
           >
             📄 CV complet
@@ -589,6 +403,35 @@ export default function CineView({ cv, cinematic, tagline }: CineViewProps) {
           ))}
         </motion.div>
       </motion.section>
+
+      {/* ---- Navigation galerie : compteur + flèches gauche/droite ---------- */}
+      {photos.length > 1 && (
+        <>
+          <span className="absolute left-5 top-5 z-[15] rounded-full border border-white/15 bg-[#000c1c]/55 px-3.5 py-1.5 text-xs tracking-wider backdrop-blur-md">
+            {photoIndex + 1}/{photos.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => changePhoto(-1)}
+            aria-label="Photo précédente"
+            className="absolute left-4 top-1/2 z-[15] grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-[#000c1c]/60 text-text-main backdrop-blur-md transition hover:scale-105 hover:border-accent/60"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden>
+              <polyline points="15,18 9,12 15,6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => changePhoto(1)}
+            aria-label="Photo suivante"
+            className="absolute right-4 top-1/2 z-[15] grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-[#000c1c]/60 text-text-main backdrop-blur-md transition hover:scale-105 hover:border-accent/60"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden>
+              <polyline points="9,18 15,12 9,6" />
+            </svg>
+          </button>
+        </>
+      )}
 
       {/* ---- Panneau latéral : stats / parcours / palmarès ------------------- */}
       <AnimatePresence>
