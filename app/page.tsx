@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -41,8 +42,8 @@ export default function HomePage() {
       <header className="hero">
         {/* Une seule image statique : le crossfade de 3 calques plein écran
             en mix-blend-mode coûtait une recomposition GPU permanente */}
-        <div className="hero-montage" aria-hidden="true">
-          <img src="/images/4.avif" alt="" />
+        <div className="hero-montage" aria-hidden="true" style={{ position: 'relative' }}>
+          <Image src="/images/4.avif" alt="" fill style={{ objectFit: 'cover' }} />
         </div>
         <div className="hero-glyphs" aria-hidden="true">
           <span style={{ left: '8%', top: '24%', animationDuration: '13s' }}>⚽</span>
@@ -164,8 +165,8 @@ export default function HomePage() {
               🎬 Mode cinématique
             </a>
             <Link className="showcase-link-wrap" href="/profil?a=dembele">
-              <div className="showcase-media">
-                <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
+              <div className="showcase-media" style={{ position: 'relative' }}>
+                <Image src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" fill style={{ objectFit: 'cover' }} />
                 <span className="showcase-emoji">⚽</span>
               </div>
               <div className="showcase-body">

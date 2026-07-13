@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -46,8 +47,8 @@ export default function ExemplesPage() {
                 🎬 Mode cinématique
               </a>
               <Link className="showcase-link-wrap" href="/profil?a=dembele">
-                <div className="showcase-media">
-                  <img src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" loading="lazy" />
+                <div className="showcase-media" style={{ position: 'relative' }}>
+                  <Image src="/images/4.avif" alt="Profil d'Ousmane Dembélé sur ATHLETE CV" fill style={{ objectFit: 'cover' }} />
                   <span className="showcase-emoji">⚽</span>
                 </div>
                 <div className="showcase-body">

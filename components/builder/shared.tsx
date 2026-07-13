@@ -10,6 +10,7 @@
  * déborder de son conteneur (voir « Builder v2 » dans globals.css).
  */
 
+import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getMyProfile } from '@/app/actions/auth'
@@ -159,14 +160,14 @@ export function CropBox({
     <div className="field">
       <label>{label}</label>
       <input ref={fileRef} type="file" accept="image/*" className="file-input" onChange={handleFile} />
-      <div ref={boxRef} className={`crop-box${circle ? ' circle' : ' wide'}`}
+      <div ref={boxRef} className={`crop-box${circle ? ' circle' : ' wide'}`} style={{ position: 'relative' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove}
         onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
       >
         {uploading && <div className="ph">Envoi…</div>}
         {!uploading && src && (
           <>
-            <img src={src} style={{ transform: cropTf(posX, posY, zoom), transformOrigin: 'center' }} alt="" />
+            <Image src={src} alt="" fill unoptimized style={{ objectFit: 'cover', transform: cropTf(posX, posY, zoom), transformOrigin: 'center' }} />
             <span className="grip">✛ glisse</span>
           </>
         )}

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { CvData } from '@/app/actions/cv'
@@ -132,12 +133,14 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           <div className="p-cover">
             <span className="sport-emoji">{cv.emoji || '🏅'}</span>
           </div>
-          <div className="p-avatar">
+          <div className="p-avatar" style={{ position: 'relative' }}>
             {cv.avatar ? (
-              <img
+              <Image
                 src={cv.avatar}
                 alt={`${cv.first} ${cv.last}`}
-                style={{ transform: cropTf(cx, cy, cz), transformOrigin: 'center' }}
+                fill
+                unoptimized
+                style={{ objectFit: 'cover', transform: cropTf(cx, cy, cz), transformOrigin: 'center' }}
               />
             ) : (
               <span className="initials">{initials}</span>
