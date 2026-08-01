@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
     .from('subscriptions')
     .select('user_id, stripe_payment_intent_id')
     .eq('status', 'trialing')
-    .not('stripe_payment_intent_id', 'is', null)
     .lte('trial_ends_at', new Date().toISOString())
     .limit(50)
 
@@ -39,32 +38,43 @@ export async function GET(request: NextRequest) {
 
   let captured = 0
   let failed = 0
+  let canceled = 0
 
   for (const sub of due ?? []) {
-    try {
-      const intent = await stripe.paymentIntents.retrieve(sub.stripe_payment_intent_id!)
-      if (intent.status === 'requires_capture') {
-        await stripe.paymentIntents.capture(intent.id)
-        captured++
-      } else if (intent.status === 'canceled') {
-        // Annulé côté Stripe sans que le webhook soit passé : on resynchronise.
-        await admin
-          .from('subscriptions')
-          .update({ status: 'canceled', plan: 'free', trial_ends_at: null, updated_at: new Date().toISOString() })
-          .eq('user_id', sub.user_id)
-        await admin.from('profiles').update({ plan: 'free' }).eq('id', sub.user_id)
-        await admin.from('cvs').update({ visibility: 'private' }).eq('user_id', sub.user_id)
-      }
-    } catch (e) {
-      // Carte expirée / autorisation tombée : on marque l'échec pour relance manuelle.
-      failed++
-      console.error('[cron-capture] Capture échouée pour', sub.user_id, e)
+    if (!sub.stripe_payment_intent_id) {
+      // Essai gratuit sans carte : expiration directe, plan free, CV masqué
       await admin
         .from('subscriptions')
-        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+        .update({ status: 'canceled', plan: 'free', trial_ends_at: null, updated_at: new Date().toISOString() })
         .eq('user_id', sub.user_id)
+      await admin.from('profiles').update({ plan: 'free' }).eq('id', sub.user_id)
+      await admin.from('cvs').update({ visibility: 'private' }).eq('user_id', sub.user_id)
+      canceled++
+    } else {
+      // Ancien essai avec pré-autorisation Stripe
+      try {
+        const intent = await stripe.paymentIntents.retrieve(sub.stripe_payment_intent_id)
+        if (intent.status === 'requires_capture') {
+          await stripe.paymentIntents.capture(intent.id)
+          captured++
+        } else if (intent.status === 'canceled') {
+          await admin
+            .from('subscriptions')
+            .update({ status: 'canceled', plan: 'free', trial_ends_at: null, updated_at: new Date().toISOString() })
+            .eq('user_id', sub.user_id)
+          await admin.from('profiles').update({ plan: 'free' }).eq('id', sub.user_id)
+          await admin.from('cvs').update({ visibility: 'private' }).eq('user_id', sub.user_id)
+        }
+      } catch (e) {
+        failed++
+        console.error('[cron-capture] Capture échouée pour', sub.user_id, e)
+        await admin
+          .from('subscriptions')
+          .update({ status: 'past_due', updated_at: new Date().toISOString() })
+          .eq('user_id', sub.user_id)
+      }
     }
   }
 
-  return NextResponse.json({ processed: due?.length ?? 0, captured, failed })
+  return NextResponse.json({ processed: due?.length ?? 0, captured, failed, canceled })
 }

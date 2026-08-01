@@ -6,7 +6,7 @@
  * Le mode cinématique a son propre espace : /builder/cinematique.
  */
 
-import { useCallback, useEffect, useRef, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import Link from 'next/link'
 import {
   useCvBuilder, DynRows, CropBox, CharCount,
@@ -17,6 +17,50 @@ function ClassiqueContent() {
   const b = useCvBuilder('/builder/classique')
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const previewReady = useRef(false)
+
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importUrl, setImportUrl] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+
+  async function handleImport() {
+    if (!importUrl) return
+    setImporting(true)
+    setImportError('')
+    try {
+      const res = await fetch('/api/import-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setImportError(data.error || 'Erreur lors de l\'importation.')
+        setImporting(false)
+        return
+      }
+
+      // Remplir les données dans le builder
+      if (data.first) b.setFirst(data.first)
+      if (data.last) b.setLast(data.last)
+      if (data.sport) b.setSport(data.sport)
+      if (data.discipline) b.setDiscipline(data.discipline)
+      if (data.location) b.setLocation(data.location)
+      if (data.avatar) b.setAvatar(data.avatar)
+      if (data.stats && data.stats.length) b.setStats(data.stats)
+      if (data.palmares && data.palmares.length) b.setPalmares(data.palmares)
+      if (data.career && data.career.length) b.setCareer(data.career)
+
+      setShowImportModal(false)
+      setImportUrl('')
+      b.setAlertMsg({ msg: 'Données importées avec succès ! Vérifie les informations et enregistre.', ok: true })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Une erreur est survenue.'
+      setImportError(msg)
+    } finally {
+      setImporting(false)
+    }
+  }
 
   // `b` est un objet neuf à chaque rendu ; seul `buildPayload` (mémoïsé dans
   // useCvBuilder) doit déclencher la resynchronisation de l'aperçu.
@@ -91,7 +135,15 @@ function ClassiqueContent() {
         <div style={{ minWidth: 0 }}>
           {/* 1 — Identité */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">1</span><h3>Identité</h3></div>
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">1</span>
+                <h3>Identité</h3>
+              </div>
+              <button type="button" className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.7rem', height: 'auto', letterSpacing: '0.05em' }} onClick={() => setShowImportModal(true)}>
+                ⚡ Importer (Transfermarkt / LNH)
+              </button>
+            </div>
             <div className="row2">
               <div className="field">
                 <label>Prénom</label>
@@ -213,6 +265,42 @@ function ClassiqueContent() {
           </div>
         </div>
       </div>
+
+      {showImportModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>⚡ Importer depuis Transfermarkt / LNH</h3>
+              <button type="button" className="close-btn" onClick={() => setShowImportModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p>
+                Colle le lien de ton profil <strong>Transfermarkt</strong> (Football) ou <strong>LNH</strong> (Handball) ci-dessous pour pré-remplir ton profil et tes statistiques en un clic.
+              </p>
+              <div className="field">
+                <label>URL du profil joueur</label>
+                <input 
+                  type="url" 
+                  placeholder="https://www.transfermarkt.fr/lowen-nsonga/profil/spieler/..." 
+                  value={importUrl} 
+                  onChange={(e) => setImportUrl(e.target.value)} 
+                  disabled={importing}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 4, background: 'var(--bg-2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+              {importError && <p className="alert err" style={{ marginTop: 10 }}>{importError}</p>}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={() => setShowImportModal(false)} disabled={importing}>
+                Annuler
+              </button>
+              <button type="button" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={handleImport} disabled={importing || !importUrl}>
+                {importing ? 'Importation...' : 'Importer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

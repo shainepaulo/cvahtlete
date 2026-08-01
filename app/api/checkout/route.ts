@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
   }
 
   const origin = siteOriginFromConfig()
-  const isTrial = plan.trialDays > 0
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', // PAIEMENT UNIQUE — jamais mode 'subscription'
@@ -85,16 +84,13 @@ export async function POST(request: NextRequest) {
           unit_amount: plan.amountCents,
           product_data: {
             name: plan.label,
-            description: isTrial
-              ? `0 € aujourd'hui — carte autorisée, paiement unique de ${(plan.amountCents / 100).toFixed(0)} € capturé dans ${plan.trialDays} jours sauf annulation. Aucun abonnement.`
-              : 'Paiement unique — aucun abonnement.',
+            description: 'Paiement unique — aucun abonnement.',
           },
         },
       },
     ],
     payment_intent_data: {
-      // Pro : autorisation seule à J0, capture différée à J+3 par le cron.
-      capture_method: isTrial ? 'manual' : 'automatic',
+      capture_method: 'automatic',
       metadata: { supabase_user_id: user.id, plan: plan.id },
     },
     metadata: { supabase_user_id: user.id, plan: plan.id },

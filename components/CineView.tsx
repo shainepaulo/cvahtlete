@@ -21,6 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CvData } from "@/app/actions/cv";
 
@@ -224,7 +225,7 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
   // Préchargement : évite le flash blanc au premier changement de photo.
   useEffect(() => {
     photos.forEach((p) => {
-      const img = new Image();
+      const img = new window.Image();
       img.src = p.src;
     });
   }, [photos]);
@@ -247,6 +248,45 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
       }, 380)
     );
   }
+
+  // ---- Swipe tactile pour le carrousel sur mobile --------------------------
+  const touchStartX = useRef(0);
+  const isSwipe = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    isSwipe.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const diffX = e.touches[0].clientX - touchStartX.current;
+    if (Math.abs(diffX) > 10) {
+      isSwipe.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isSwipe.current && e.changedTouches.length > 0) {
+      const diffX = e.changedTouches[0].clientX - touchStartX.current;
+      const threshold = 40; // distance minimale en pixels
+      if (Math.abs(diffX) > threshold) {
+        if (diffX < 0) {
+          changePhoto(1); // glissement gauche -> photo suivante
+        } else {
+          changePhoto(-1); // glissement droite -> photo précédente
+        }
+      }
+    }
+  };
+
+  const handleClickBackground = (e: React.MouseEvent) => {
+    if (isSwipe.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    changePhoto(1);
+  };
 
   // ---- Verrou premium : le booléen vient du SERVEUR (entitlements RLS) ----
   if (!cinematic) {
@@ -288,12 +328,14 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
       {/* ---- Fond : photo plein écran (comme Noa) ou dégradés de la charte -- */}
       {hasGallery ? (
         <div aria-hidden className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={(photos[photoIndex] ?? photos[0]).src}
             alt=""
-            className="h-full w-full object-cover"
+            fill
+            priority
+            unoptimized
             style={{
+              objectFit: "cover",
               objectPosition: (photos[photoIndex] ?? photos[0]).position,
               filter: "brightness(.92) contrast(1.06)",
             }}
@@ -315,11 +357,14 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
         <GradientBackdrop />
       )}
 
-      {/* Clic n'importe où sur l'interface = photo suivante (pattern Noa) */}
+      {/* Clic n'importe où sur l'interface = photo suivante (pattern Noa) + support swipe */}
       {photos.length > 1 && (
         <button
           type="button"
-          onClick={() => changePhoto(1)}
+          onClick={handleClickBackground}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           aria-label="Photo suivante"
           className="absolute inset-0 z-[5] cursor-pointer border-0 bg-transparent"
         />

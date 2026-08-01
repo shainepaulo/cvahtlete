@@ -21,12 +21,17 @@ export default async function DashboardPage() {
   const [{ data: profile }, { data: cv }, { data: sub }] = await Promise.all([
     supabase.from('profiles').select('full_name, email, is_owner, is_super_admin, plan, account_status').eq('id', user.id).single(),
     supabase.from('cvs').select('slug, visibility').eq('user_id', user.id).maybeSingle(),
-    supabase.from('subscriptions').select('status, trial_ends_at').eq('user_id', user.id).maybeSingle(),
+    supabase.from('subscriptions').select('status, trial_ends_at, plan').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (profile?.account_status && profile.account_status !== 'active') redirect('/login?error=inactive')
 
-  const plan = profile?.plan ?? 'free'
+  // Un essai est expiré s'il est dépassé dans le temps ou s'il a été annulé
+  const isExpired = !!(
+    (sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date()) ||
+    (sub?.status === 'canceled' && sub.trial_ends_at)
+  )
+  const plan = isExpired ? 'free' : (profile?.plan ?? 'free')
   const hasPlan = plan !== 'free'
   const isOwner = !!profile?.is_owner || !!profile?.is_super_admin
   const isSuperAdmin = !!profile?.is_super_admin
@@ -48,8 +53,8 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {sub?.status === 'trialing' && sub.trial_ends_at && (
-        <TrialBanner trialEndsAt={sub.trial_ends_at} amountEuros={79} />
+      {sub?.trial_ends_at && (sub?.status === 'trialing' || sub?.status === 'canceled') && (
+        <TrialBanner trialEndsAt={sub.trial_ends_at} isExpired={isExpired} />
       )}
 
       <div className="dash-grid">

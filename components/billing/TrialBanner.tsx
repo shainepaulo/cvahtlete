@@ -1,67 +1,53 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { cancelTrial } from '@/app/actions/billing'
+import Link from 'next/link'
 
 interface Props {
   /** Fin d'essai (ISO) — affichée à l'utilisateur. */
   trialEndsAt: string
-  /** Montant du paiement unique qui sera capturé à J+3 (euros). */
-  amountEuros: number
+  /** Indique si l'essai a expiré. */
+  isExpired: boolean
 }
 
 /**
- * Bandeau affiché pendant l'essai Pro : rappelle la date de capture du
- * paiement unique et permet d'annuler (aucun débit, CV hors ligne).
+ * Bandeau affiché pendant l'essai gratuit de 3 jours.
  */
-export function TrialBanner({ trialEndsAt, amountEuros }: Props) {
-  const router = useRouter()
-  const [pending, startTransition] = useTransition()
-  const [confirming, setConfirming] = useState(false)
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
-
+export function TrialBanner({ trialEndsAt, isExpired }: Props) {
   const endDate = new Date(trialEndsAt).toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 
-  function onCancel() {
-    startTransition(async () => {
-      const res = await cancelTrial()
-      if (res.error) {
-        setMsg({ text: res.error, ok: false })
-      } else {
-        setMsg({ text: res.ok ?? 'Essai annulé.', ok: true })
-        router.refresh()
-      }
-      setConfirming(false)
-    })
+  if (isExpired) {
+    return (
+      <div className="trial-banner" style={{ background: 'linear-gradient(90deg, #ff4e50, #f9d423)', color: '#000', border: 'none', padding: '16px 20px', borderRadius: 10, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+        <div className="trial-banner-txt" style={{ display: 'grid', gap: 4, color: '#000' }}>
+          <strong style={{ fontSize: '1.05rem' }}>⚠️ Ta période d&apos;essai est terminée.</strong>
+          <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+            Ton CV est hors ligne et l&apos;accès aux modifications est bloqué. Choisis ton plan pour débloquer ton répertoire.
+          </span>
+        </div>
+        <Link href="/tarifs" className="btn" style={{ background: '#000', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 6, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+          Débloquer mon CV
+        </Link>
+      </div>
+    )
   }
 
   return (
-    <div className="trial-banner">
-      <div className="trial-banner-txt">
-        <strong>🛡️ Essai Pro en cours — 0 € débité pour l&apos;instant.</strong>
-        <span>
-          Sans annulation, ton paiement unique de {amountEuros} € sera capturé le{' '}
-          <strong>{endDate}</strong>, puis tes avantages resteront actifs. Aucun abonnement.
+    <div className="trial-banner" style={{ padding: '16px 20px', borderRadius: 10, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, border: '1px solid var(--border)' }}>
+      <div className="trial-banner-txt" style={{ display: 'grid', gap: 4 }}>
+        <strong style={{ fontSize: '1.05rem', color: 'var(--gold)' }}>⚡ Essai gratuit actif (sans engagement).</strong>
+        <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>
+          Ton répertoire est en ligne. L&apos;essai se termine le <strong>{endDate}</strong>. Choisis ton plan pour le garder en ligne définitivement.
         </span>
-        {msg && <span className={msg.ok ? 'ok' : 'err'}>{msg.text}</span>}
       </div>
-      {confirming ? (
-        <div className="trial-banner-actions">
-          <button type="button" className="btn btn-ghost" disabled={pending} onClick={onCancel}>
-            {pending ? 'Annulation…' : 'Confirmer l’annulation'}
-          </button>
-          <button type="button" className="mini-btn" disabled={pending} onClick={() => setConfirming(false)}>
-            Garder mon essai
-          </button>
-        </div>
-      ) : (
-        <button type="button" className="mini-btn danger" onClick={() => setConfirming(true)}>
-          Annuler l&apos;essai (0 € débité, CV hors ligne)
-        </button>
-      )}
+      <Link href="/tarifs" className="btn btn-ghost" style={{ padding: '10px 18px', borderRadius: 6, textDecoration: 'none', display: 'inline-block' }}>
+        Activer mon offre
+      </Link>
     </div>
   )
 }

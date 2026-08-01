@@ -167,15 +167,27 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("full_name, plan, is_owner, account_status")
-    .eq("id", user.id)
-    .single();
+  const [{ data }, { data: sub }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, plan, is_owner, account_status")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("subscriptions")
+      .select("status, trial_ends_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (data?.account_status && data.account_status !== "active") return null;
 
-  const plan = (data?.plan ?? "free") as MyProfile["plan"];
+  const isExpired = !!(
+    (sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date()) ||
+    (sub?.status === 'canceled' && sub.trial_ends_at)
+  );
+
+  const plan = (isExpired ? "free" : (data?.plan ?? "free")) as MyProfile["plan"];
   const isOwner = !!data?.is_owner;
   return {
     fullName: data?.full_name ?? "",

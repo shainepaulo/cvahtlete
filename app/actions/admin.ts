@@ -162,3 +162,120 @@ export async function setCvVisibility(
   revalidatePath(`/${cv.slug}`);
   return { ok: `Visibilité mise à jour : ${visibility === 'public' ? 'public' : 'privé'}.` };
 }
+
+// ─── Gestion manuelle des offres et des essais par l'admin (Refonte Admin) ──
+
+export async function updateUserPlan(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const plan = String(formData.get("plan") ?? "").trim();
+
+  if (!userId) return { error: "ID utilisateur requis." };
+  if (!['free', 'starter', 'pro', 'club'].includes(plan)) {
+    return { error: "Plan invalide." };
+  }
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non connecté." };
+
+  const { data: actor } = await supabase
+    .from('profiles')
+    .select('is_owner, is_super_admin, account_status')
+    .eq('id', user.id)
+    .single();
+
+  if (!actor?.is_owner && !actor?.is_super_admin) return { error: "Accès refusé." };
+  if (actor.account_status && actor.account_status !== 'active') return { error: "Compte inactif." };
+  if (user.id === userId) {
+    return { error: "Tu ne peux pas modifier ton propre plan depuis cette console." };
+  }
+
+  const admin = createAdminClient();
+  const { data: targetProfile } = await admin
+    .from('profiles')
+    .select('id, email, is_super_admin')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!targetProfile) return { error: "Compte introuvable." };
+  if (targetProfile.is_super_admin && !actor.is_super_admin) {
+    return { error: "Seul le super admin peut modifier ce compte." };
+  }
+
+  const isFree = plan === 'free';
+  const now = new Date().toISOString();
+
+  const [{ error: profileError }, { error: subError }] = await Promise.all([
+    admin.from('profiles').update({ plan }).eq('id', userId),
+    admin.from('subscriptions').update({
+      plan,
+      status: isFree ? 'canceled' : 'active',
+      trial_ends_at: null,
+      updated_at: now
+    }).eq('user_id', userId)
+  ]);
+
+  if (profileError || subError) {
+    return { error: "Erreur lors de la mise à jour de l'offre." };
+  }
+
+  revalidatePath('/admin');
+  return { ok: `L'offre de ${targetProfile.email} a été mise à jour en ${plan}.` };
+}
+
+export async function extendTrial(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const days = parseInt(String(formData.get("days") ?? "0").trim(), 10);
+
+  if (!userId) return { error: "ID utilisateur requis." };
+  if (isNaN(days) || days <= 0) return { error: "Nombre de jours invalide." };
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non connecté." };
+
+  const { data: actor } = await supabase
+    .from('profiles')
+    .select('is_owner, is_super_admin, account_status')
+    .eq('id', user.id)
+    .single();
+
+  if (!actor?.is_owner && !actor?.is_super_admin) return { error: "Accès refusé." };
+  if (actor.account_status && actor.account_status !== 'active') return { error: "Compte inactif." };
+
+  const admin = createAdminClient();
+  const { data: sub } = await admin
+    .from('subscriptions')
+    .select('user_id, status, trial_ends_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!sub) return { error: "Abonnement introuvable." };
+
+  const currentTrialEnd = sub.trial_ends_at ? new Date(sub.trial_ends_at) : new Date();
+  const baseDate = currentTrialEnd > new Date() ? currentTrialEnd : new Date();
+  const newTrialEnd = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ error: subError }, { error: profileError }] = await Promise.all([
+    admin.from('subscriptions').update({
+      status: 'trialing',
+      plan: 'pro',
+      trial_ends_at: newTrialEnd,
+      updated_at: new Date().toISOString()
+    }).eq('user_id', userId),
+    admin.from('profiles').update({ plan: 'pro' }).eq('id', userId)
+  ]);
+
+  if (subError || profileError) {
+    return { error: "Erreur lors de la prolongation de l'essai." };
+  }
+
+  revalidatePath('/admin');
+  return { ok: `L'essai a été prolongé de ${days} jours.` };
+}
