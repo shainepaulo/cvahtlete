@@ -248,6 +248,45 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
     );
   }
 
+  // ---- Swipe tactile pour le carrousel sur mobile --------------------------
+  const touchStartX = useRef(0);
+  const isSwipe = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    isSwipe.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const diffX = e.touches[0].clientX - touchStartX.current;
+    if (Math.abs(diffX) > 10) {
+      isSwipe.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isSwipe.current && e.changedTouches.length > 0) {
+      const diffX = e.changedTouches[0].clientX - touchStartX.current;
+      const threshold = 40; // distance minimale en pixels
+      if (Math.abs(diffX) > threshold) {
+        if (diffX < 0) {
+          changePhoto(1); // glissement gauche -> photo suivante
+        } else {
+          changePhoto(-1); // glissement droite -> photo précédente
+        }
+      }
+    }
+  };
+
+  const handleClickBackground = (e: React.MouseEvent) => {
+    if (isSwipe.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    changePhoto(1);
+  };
+
   // ---- Verrou premium : le booléen vient du SERVEUR (entitlements RLS) ----
   if (!cinematic) {
     return (
@@ -315,11 +354,14 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
         <GradientBackdrop />
       )}
 
-      {/* Clic n'importe où sur l'interface = photo suivante (pattern Noa) */}
+      {/* Clic n'importe où sur l'interface = photo suivante (pattern Noa) + support swipe */}
       {photos.length > 1 && (
         <button
           type="button"
-          onClick={() => changePhoto(1)}
+          onClick={handleClickBackground}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           aria-label="Photo suivante"
           className="absolute inset-0 z-[5] cursor-pointer border-0 bg-transparent"
         />
