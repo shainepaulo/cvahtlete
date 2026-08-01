@@ -35,6 +35,7 @@ export interface CvData {
   career?: unknown[];
   links?: unknown[];
   visibility?: string;
+  blocked?: boolean;
 }
 
 const EMOJI: Record<string, string> = {
@@ -239,7 +240,24 @@ export async function getMyCv(): Promise<CvData | null> {
   if (!user) return null;
   const { data } = await supabase
     .from("cvs").select("*").eq("user_id", user.id).maybeSingle();
-  return data ? rowToCv(data as Record<string, unknown>) : null;
+  if (!data) return null;
+  const cv = rowToCv(data as Record<string, unknown>);
+
+  // Vérification de l'expiration dynamique
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("status, trial_ends_at, plan")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isExpired = sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date();
+  const isCanceled = sub?.status === 'canceled' || sub?.status === 'past_due' || sub?.status === 'free';
+  const hasPaid = sub?.status === 'active' || sub?.plan === 'club';
+
+  if ((isExpired || isCanceled) && !hasPaid) {
+    cv.blocked = true;
+  }
+  return cv;
 }
 
 // ─── Lecture : CV par slug (RLS gère public / self / owner) ──────────────────
@@ -249,17 +267,35 @@ export async function getCvBySlug(slug: string): Promise<CvData | null> {
   const supabase = createClient();
   const { data } = await supabase
     .from("cvs").select("*").eq("slug", slug).maybeSingle();
-  if (data) return rowToCv(data as Record<string, unknown>);
 
-  // RLS a bloqué la lecture (CV privé, visiteur ni propriétaire ni owner).
-  // Mode « Lien Direct » (Tâche 4) : un CV privé reste accessible à quiconque
-  // connaît son slug exact — seule la Bibliothèque publique le masque.
-  // Connaître le slug fait office de clé d'accès ; on relit donc en
-  // service_role, en contournant volontairement la RLS pour CE lookup ciblé.
+  let cvRow = data;
+  if (!cvRow) {
+    const admin = createAdminClient();
+    const { data: direct } = await admin
+      .from("cvs").select("*").eq("slug", slug).maybeSingle();
+    cvRow = direct;
+  }
+
+  if (!cvRow) return null;
+
+  const cv = rowToCv(cvRow as Record<string, unknown>);
+
   const admin = createAdminClient();
-  const { data: direct } = await admin
-    .from("cvs").select("*").eq("slug", slug).maybeSingle();
-  return direct ? rowToCv(direct as Record<string, unknown>) : null;
+  const [{ data: sub }, { data: ownerProfile }] = await Promise.all([
+    admin.from("subscriptions").select("status, trial_ends_at, plan").eq("user_id", cvRow.user_id).maybeSingle(),
+    admin.from("profiles").select("is_owner, is_super_admin").eq("id", cvRow.user_id).maybeSingle(),
+  ]);
+
+  const isOwner = !!(ownerProfile?.is_owner || ownerProfile?.is_super_admin);
+  const isExpired = sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date();
+  const isCanceled = sub?.status === 'canceled' || sub?.status === 'past_due' || sub?.status === 'free';
+  const hasPaid = sub?.status === 'active' || sub?.plan === 'club';
+
+  if (!isOwner && (isExpired || isCanceled) && !hasPaid) {
+    cv.blocked = true;
+  }
+
+  return cv;
 }
 
 // ─── Lecture : Bibliothèque publique (Tâche 4) ────────────────────────────────

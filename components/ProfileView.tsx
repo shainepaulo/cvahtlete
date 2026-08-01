@@ -123,6 +123,40 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
 
   return (
     <>
+      {cv.blocked && isOwn && (
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(90deg, #ff4e50, #f9d423)',
+          color: '#000',
+          padding: '12px 20px',
+          textAlign: 'center',
+          fontWeight: 700,
+          fontSize: '0.88rem',
+          zIndex: 9999,
+          boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 15,
+          flexWrap: 'wrap'
+        }}>
+          <span>⚠️ Période d&apos;essai terminée. Ton CV est actuellement masqué pour le public.</span>
+          <Link href="/tarifs" className="btn btn-primary" style={{
+            background: '#000',
+            color: '#fff',
+            border: 'none',
+            padding: '6px 14px',
+            fontSize: '0.78rem',
+            borderRadius: 6,
+            textDecoration: 'none',
+            boxShadow: 'none',
+            fontWeight: 600
+          }}>Débloquer mon CV</Link>
+        </div>
+      )}
       <div
         id="profileRoot"
         className="profile-wrap"

@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useFormState, useFormStatus } from 'react-dom'
-import { updateAccountStatus, type AdminActionState } from '@/app/actions/admin'
+import { useState, useTransition, useEffect, useCallback } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { updateAccountStatus, setCvVisibility, updateUserPlan, extendTrial } from '@/app/actions/admin'
 
 type AccountStatus = 'active' | 'suspended' | 'revoked'
 
@@ -15,14 +15,48 @@ export interface AdminUserRow {
   is_owner: boolean
   is_super_admin: boolean
   created_at: string
+  trial_ends_at: string | null
+  sub_status: string | null
+  cv: { id: string; slug: string; visibility: string; first: string; last: string } | null
 }
 
 interface AdminUsersDashboardProps {
   currentEmail: string
   rows: AdminUserRow[]
+  totalCount: number
+  currentPage: number
+  pageSize: number
 }
 
-const initialState: AdminActionState = {}
+function planLabel(plan: string): string {
+  switch (plan) {
+    case 'free': return 'Free'
+    case 'starter': return 'Starter'
+    case 'pro': return 'Pro'
+    case 'club': return 'Club'
+    default: return plan
+  }
+}
+
+function planBadgeColor(plan: string): string {
+  switch (plan) {
+    case 'free': return 'rgba(255,255,255,0.1)'
+    case 'starter': return 'rgba(59, 130, 246, 0.15)'
+    case 'pro': return 'rgba(234, 179, 8, 0.15)'
+    case 'club': return 'rgba(16, 185, 129, 0.15)'
+    default: return 'rgba(255,255,255,0.1)'
+  }
+}
+
+function planTextColor(plan: string): string {
+  switch (plan) {
+    case 'free': return 'var(--muted-2)'
+    case 'starter': return '#60a5fa'
+    case 'pro': return 'var(--gold)'
+    case 'club': return '#34d399'
+    default: return '#fff'
+  }
+}
 
 function statusLabel(status: string): string {
   switch (status) {
@@ -33,7 +67,7 @@ function statusLabel(status: string): string {
   }
 }
 
-function statusTone(status: string): string {
+function statusColor(status: string): string {
   switch (status) {
     case 'active': return 'var(--accent-2)'
     case 'suspended': return 'var(--gold)'
@@ -42,156 +76,332 @@ function statusTone(status: string): string {
   }
 }
 
-function ActionForm({ status, disabled }: { status: AccountStatus; disabled?: boolean }) {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      name="account_status"
-      value={status}
-      disabled={disabled || pending}
-      className="btn btn-ghost"
-      style={{ padding: '8px 12px', fontSize: '.7rem', letterSpacing: '.12em' }}
-    >
-      {statusLabel(status)}
-    </button>
-  )
-}
-
 function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: string }) {
   const isSelf = row.email.toLowerCase() === currentEmail.toLowerCase()
-  const canManage = !isSelf
-  const [state, formAction] = useFormState(updateAccountStatus, initialState)
+  const canManage = !isSelf && !row.is_super_admin
+  
+  const [statusPending, startStatusTransition] = useTransition()
+  const [planPending, startPlanTransition] = useTransition()
+  const [trialPending, startTrialTransition] = useTransition()
+  const [visPending, startVisTransition] = useTransition()
+
+  const [statusMsg, setStatusMsg] = useState<string | null>(null)
+  const [planMsg, setPlanMsg] = useState<string | null>(null)
+  const [trialMsg, setTrialMsg] = useState<string | null>(null)
+  const [visMsg, setVisMsg] = useState<string | null>(null)
+
+  const [selectedPlan, setSelectedPlan] = useState(row.plan)
+  const [extendDays, setExtendDays] = useState(3)
+
+  // Status handler
+  const handleStatusChange = (status: AccountStatus) => {
+    setStatusMsg(null)
+    startStatusTransition(async () => {
+      const formData = new FormData()
+      formData.append('email', row.email)
+      formData.append('account_status', status)
+      const res = await updateAccountStatus({}, formData)
+      if (res.error) setStatusMsg(res.error)
+      else setStatusMsg(res.ok ?? 'Statut mis à jour.')
+    })
+  }
+
+  // Plan handler
+  const handlePlanChange = () => {
+    setPlanMsg(null)
+    startPlanTransition(async () => {
+      const formData = new FormData()
+      formData.append('user_id', row.id)
+      formData.append('plan', selectedPlan)
+      const res = await updateUserPlan({}, formData)
+      if (res.error) setPlanMsg(res.error)
+      else setPlanMsg(res.ok ?? 'Plan mis à jour.')
+    })
+  }
+
+  // Trial extension handler
+  const handleExtendTrial = () => {
+    setTrialMsg(null)
+    startTrialTransition(async () => {
+      const formData = new FormData()
+      formData.append('user_id', row.id)
+      formData.append('days', String(extendDays))
+      const res = await extendTrial({}, formData)
+      if (res.error) setTrialMsg(res.error)
+      else setTrialMsg(res.ok ?? 'Essai prolongé.')
+    })
+  }
+
+  // CV visibility handler
+  const handleVisChange = (visibility: 'public' | 'private') => {
+    setVisMsg(null)
+    if (!row.cv) return
+    startVisTransition(async () => {
+      const formData = new FormData()
+      formData.append('cv_id', row.cv!.id)
+      formData.append('visibility', visibility)
+      const res = await setCvVisibility({}, formData)
+      if (res.error) setVisMsg(res.error)
+      else setVisMsg(res.ok ?? 'Visibilité mise à jour.')
+    })
+  }
+
+  const isTrialActive = row.sub_status === 'trialing' && row.trial_ends_at && new Date(row.trial_ends_at) > new Date()
+  const isTrialExpired = row.sub_status === 'trialing' && row.trial_ends_at && new Date(row.trial_ends_at) <= new Date()
 
   return (
     <>
-      <td>
+      {/* Colonne Identité */}
+      <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
         <div style={{ display: 'grid', gap: 3 }}>
-          <strong>{row.full_name || 'Sans nom'}</strong>
-          <span style={{ color: 'var(--muted-2)', fontSize: '.8rem' }}>{row.email}</span>
+          <strong style={{ fontSize: '0.95rem' }}>{row.full_name || 'Sans nom'}</strong>
+          <span style={{ color: 'var(--muted-2)', fontSize: '0.82rem' }}>{row.email}</span>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontFamily: 'monospace' }}>ID: {row.id}</span>
+          {row.cv ? (
+            <div style={{ marginTop: 8, fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)', display: 'grid', gap: 4 }}>
+              <span>📝 CV: <strong>{row.cv.first} {row.cv.last}</strong></span>
+              <span>🔗 Slug: <a href={`/${row.cv.slug}`} target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>/{row.cv.slug}</a></span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                Visibilité: <strong style={{ color: row.cv.visibility === 'public' ? 'var(--accent-2)' : 'var(--muted)' }}>{row.cv.visibility === 'public' ? 'Public' : 'Privé'}</strong>
+                {canManage && (
+                  <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                    <button onClick={() => handleVisChange('public')} disabled={visPending || row.cv!.visibility === 'public'} className="mini-btn" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Public</button>
+                    <button onClick={() => handleVisChange('private')} disabled={visPending || row.cv!.visibility === 'private'} className="mini-btn danger" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Privé</button>
+                  </div>
+                )}
+              </span>
+              {visMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{visMsg}</span>}
+            </div>
+          ) : (
+            <span style={{ color: 'var(--muted-2)', fontSize: '0.78rem', fontStyle: 'italic', marginTop: 4 }}>Aucun CV créé</span>
+          )}
         </div>
       </td>
-      <td>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {row.is_super_admin && <span className="tag">Super admin</span>}
-          {row.is_owner && <span className="tag">Owner</span>}
+
+      {/* Rôles & Privilèges */}
+      <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+          {row.is_super_admin ? (
+            <span className="tag" style={{ background: 'linear-gradient(135deg, var(--gold), #ffb800)', color: '#000', fontWeight: 'bold' }}>Super Admin</span>
+          ) : row.is_owner ? (
+            <span className="tag" style={{ background: 'var(--gold)', color: '#000' }}>Owner</span>
+          ) : (
+            <span className="tag" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)' }}>Membre</span>
+          )}
         </div>
       </td>
-      <td>{row.plan}</td>
-      <td>
-        <span style={{ color: statusTone(row.account_status), fontWeight: 700 }}>
-          {statusLabel(row.account_status)}
-        </span>
+
+      {/* Colonne Plan & Offres (Avec Formulaire Modifiable) */}
+      <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="tag" style={{ background: planBadgeColor(row.plan), color: planTextColor(row.plan), fontWeight: 'bold', fontSize: '0.78rem' }}>
+              {planLabel(row.plan)}
+            </span>
+          </div>
+
+          {canManage && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <select
+                value={selectedPlan}
+                onChange={(e) => setSelectedPlan(e.target.value)}
+                style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: '#fff', borderRadius: 4, padding: '4px 6px', fontSize: '0.75rem', outline: 'none' }}
+              >
+                <option value="free">Free</option>
+                <option value="starter">Starter</option>
+                <option value="pro">Pro</option>
+                <option value="club">Club</option>
+              </select>
+              <button onClick={handlePlanChange} disabled={planPending || selectedPlan === row.plan} className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '0.7rem', borderRadius: 4 }}>
+                {planPending ? '…' : 'Changer'}
+              </button>
+            </div>
+          )}
+          {planMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.72rem' }}>{planMsg}</span>}
+        </div>
       </td>
-      <td style={{ fontSize: '.82rem', color: 'var(--muted-2)' }}>
-        {new Date(row.created_at).toLocaleDateString('fr-FR')}
+
+      {/* Abonnement / Infos Essai (Avec Formulaire Prolongation) */}
+      <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
+        <div style={{ display: 'grid', gap: 6, fontSize: '0.82rem' }}>
+          {row.sub_status ? (
+            <div style={{ display: 'grid', gap: 4 }}>
+              <span>Statut: <strong style={{ color: row.sub_status === 'active' ? 'var(--accent-2)' : row.sub_status === 'trialing' ? 'var(--gold)' : 'var(--red)' }}>{row.sub_status}</strong></span>
+              {row.trial_ends_at && (
+                <span style={{ fontSize: '0.78rem', color: isTrialExpired ? 'var(--red)' : 'var(--muted)' }}>
+                  {isTrialActive && `⏳ Essai actif : finit le ${new Date(row.trial_ends_at).toLocaleDateString('fr-FR')}`}
+                  {isTrialExpired && `⌛ Essai expiré le ${new Date(row.trial_ends_at).toLocaleDateString('fr-FR')}`}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span style={{ color: 'var(--muted-2)', fontStyle: 'italic' }}>Aucune info</span>
+          )}
+
+          {canManage && (row.sub_status === 'trialing' || isTrialExpired || row.plan === 'free') && (
+            <div style={{ display: 'grid', gap: 6, marginTop: 6, padding: 8, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: 6 }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--muted-2)' }}>Prolonger l&apos;essai Pro :</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={extendDays}
+                  onChange={(e) => setExtendDays(Math.max(1, parseInt(e.target.value, 10)))}
+                  style={{ width: 50, background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: '#fff', borderRadius: 4, padding: '4px', fontSize: '0.75rem', textAlign: 'center' }}
+                />
+                <span style={{ fontSize: '0.75rem', alignSelf: 'center', color: 'var(--muted-2)' }}>jours</span>
+                <button onClick={handleExtendTrial} disabled={trialPending} className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.7rem', borderRadius: 4, marginLeft: 'auto' }}>
+                  {trialPending ? '…' : 'Accorder'}
+                </button>
+              </div>
+              {trialMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.72rem' }}>{trialMsg}</span>}
+            </div>
+          )}
+        </div>
       </td>
-      <td>
-        <form action={formAction} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <input type="hidden" name="email" value={row.email} />
-          <ActionForm status="active" disabled={!canManage || row.account_status === 'active'} />
-          <ActionForm status="suspended" disabled={!canManage || row.account_status === 'suspended'} />
-          <ActionForm status="revoked" disabled={!canManage || row.account_status === 'revoked'} />
-        </form>
-        {isSelf && <div style={{ color: 'var(--muted-2)', fontSize: '.75rem', marginTop: 8 }}>Tu ne peux pas te modifier depuis cette console.</div>}
-        {state?.error && <div style={{ color: 'var(--red)', fontSize: '.75rem', marginTop: 8 }}>{state.error}</div>}
-        {state?.ok && <div style={{ color: 'var(--accent-2)', fontSize: '.75rem', marginTop: 8 }}>{state.ok}</div>}
+
+      {/* Compte Statut (Actif/Suspendu/Révoqué) */}
+      <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <span style={{ color: statusColor(row.account_status), fontWeight: 700, fontSize: '0.88rem' }}>
+            {statusLabel(row.account_status)}
+          </span>
+          {canManage && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+              <button onClick={() => handleStatusChange('active')} disabled={statusPending || row.account_status === 'active'} className="mini-btn" style={{ fontSize: '0.65rem' }}>Activer</button>
+              <button onClick={() => handleStatusChange('suspended')} disabled={statusPending || row.account_status === 'suspended'} className="mini-btn" style={{ fontSize: '0.65rem', background: 'rgba(234,179,8,0.1)', color: 'var(--gold)' }}>Suspendre</button>
+              <button onClick={() => handleStatusChange('revoked')} disabled={statusPending || row.account_status === 'revoked'} className="mini-btn danger" style={{ fontSize: '0.65rem' }}>Révoquer</button>
+            </div>
+          )}
+          {statusMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.72rem' }}>{statusMsg}</span>}
+        </div>
       </td>
     </>
   )
 }
 
-export default function AdminUsersDashboard({ currentEmail, rows }: AdminUsersDashboardProps) {
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | AccountStatus>('all')
+export default function AdminUsersDashboard({ currentEmail, rows, totalCount, currentPage, pageSize }: AdminUsersDashboardProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return rows.filter((row) => {
-      const matchQuery = !q || [row.email, row.full_name, row.plan].some((v) => String(v).toLowerCase().includes(q))
-      const matchStatus = statusFilter === 'all' || row.account_status === statusFilter
-      return matchQuery && matchStatus
-    })
-  }, [rows, query, statusFilter])
+  const [query, setQuery] = useState(searchParams.get('q') || '')
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
+  const [planFilter, setPlanFilter] = useState(searchParams.get('plan') || 'all')
 
-  const stats = useMemo(() => ({
-    total: rows.length,
-    active: rows.filter((r) => r.account_status === 'active').length,
-    suspended: rows.filter((r) => r.account_status === 'suspended').length,
-    revoked: rows.filter((r) => r.account_status === 'revoked').length,
-    superAdmins: rows.filter((r) => r.is_super_admin).length,
-  }), [rows])
+  const totalPages = Math.ceil(totalCount / pageSize)
+
+  // Effectuer les recherches/filtres côté URL
+  const applyFilters = useCallback((newParams: { q?: string; status?: string; plan?: string; page?: string }) => {
+    const params = new URLSearchParams(searchParams.toString())
+    
+    if (newParams.q !== undefined) {
+      if (newParams.q) params.set('q', newParams.q)
+      else params.delete('q')
+    }
+    if (newParams.status !== undefined) {
+      if (newParams.status && newParams.status !== 'all') params.set('status', newParams.status)
+      else params.delete('status')
+    }
+    if (newParams.plan !== undefined) {
+      if (newParams.plan && newParams.plan !== 'all') params.set('plan', newParams.plan)
+      else params.delete('plan')
+    }
+    if (newParams.page !== undefined) {
+      params.set('page', newParams.page)
+    } else {
+      // Revenir en page 1 si on change les filtres
+      params.set('page', '1')
+    }
+
+    router.push(`${pathname}?${params.toString()}`)
+  }, [searchParams, pathname, router])
+
+  // Permet de debounce la recherche
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (query !== (searchParams.get('q') || '')) {
+        applyFilters({ q: query })
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [query, searchParams, applyFilters])
 
   return (
-    <div className="admin-shell" style={{ display: 'grid', gap: 22 }}>
-      <div className="grid cols-3">
-        <div className="card">
-          <span className="tag">Comptes</span>
-          <h3>{stats.total}</h3>
-          <p>Total des profils gérés.</p>
+    <div className="admin-shell" style={{ display: 'grid', gap: 24 }}>
+      {/* Barre de filtres et recherche */}
+      <div className="app-card" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 10, padding: 18 }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <h2 style={{ fontSize: '1.2rem', fontFamily: 'var(--font-display)', margin: 0, fontWeight: 700 }}>Filtres &amp; Recherche</h2>
+          <p style={{ color: 'var(--muted-2)', fontSize: '0.8rem', margin: 0 }}>Recherche instantanée et filtrage serveur.</p>
         </div>
-        <div className="card">
-          <span className="tag">Actifs</span>
-          <h3>{stats.active}</h3>
-          <p>Comptes utilisables aujourd’hui.</p>
-        </div>
-        <div className="card">
-          <span className="tag">Super admins</span>
-          <h3>{stats.superAdmins}</h3>
-          <p>Comptes avec droits maximaux.</p>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%', marginTop: 10 }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher par nom ou e-mail..."
+            style={{ flex: '1 1 240px', background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '10px 14px', fontSize: '0.88rem', fontFamily: 'var(--font-body)', outline: 'none' }}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              applyFilters({ status: e.target.value })
+            }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '10px 14px', fontSize: '0.88rem', fontFamily: 'var(--font-body)', outline: 'none' }}
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="active">Actif</option>
+            <option value="suspended">Suspendu</option>
+            <option value="revoked">Révoqué</option>
+          </select>
+          <select
+            value={planFilter}
+            onChange={(e) => {
+              setPlanFilter(e.target.value)
+              applyFilters({ plan: e.target.value })
+            }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '10px 14px', fontSize: '0.88rem', fontFamily: 'var(--font-body)', outline: 'none' }}
+          >
+            <option value="all">Tous les plans</option>
+            <option value="free">Plan Free</option>
+            <option value="starter">Plan Starter</option>
+            <option value="pro">Plan Pro</option>
+            <option value="club">Plan Club</option>
+          </select>
         </div>
       </div>
 
-      <div className="app-card" style={{ display: 'grid', gap: 18 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'grid', gap: 6 }}>
-            <h2 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-display)' }}>Utilisateurs</h2>
-            <p style={{ color: 'var(--muted-2)', fontSize: '.88rem' }}>
-              Recherche, filtrage par statut et action rapide sur chaque compte.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher un e-mail, nom ou plan"
-              style={{ minWidth: 260, background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '12px 14px', fontFamily: 'var(--font-body)' }}
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | AccountStatus)}
-              style={{ background: 'var(--bg-2)', border: '1px solid var(--border-2)', color: 'var(--text)', borderRadius: 6, padding: '12px 14px', fontFamily: 'var(--font-body)' }}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="active">Actif</option>
-              <option value="suspended">Suspendu</option>
-              <option value="revoked">Révoqué</option>
-            </select>
-          </div>
+      {/* Tableau principal */}
+      <div className="app-card" style={{ display: 'grid', gap: 18, background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <h2 style={{ fontSize: '1.4rem', fontFamily: 'var(--font-display)', fontWeight: 700, margin: 0 }}>Comptes Utilisateurs</h2>
+          <span style={{ color: 'var(--muted-2)', fontSize: '0.85rem' }}>{totalCount} utilisateur(s) trouvé(s)</span>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+        <div style={{ overflowX: 'auto', margin: '0 -20px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
             <thead>
-              <tr style={{ textAlign: 'left', color: 'var(--muted-2)', fontSize: '.78rem', textTransform: 'uppercase', letterSpacing: '.12em' }}>
-                <th style={{ padding: '12px 10px' }}>Compte</th>
-                <th style={{ padding: '12px 10px' }}>Rôle</th>
-                <th style={{ padding: '12px 10px' }}>Plan</th>
-                <th style={{ padding: '12px 10px' }}>Statut</th>
-                <th style={{ padding: '12px 10px' }}>Créé le</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right' }}>Actions</th>
+              <tr style={{ textAlign: 'left', color: 'var(--muted-2)', fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)' }}>
+                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Identité &amp; CV</th>
+                <th style={{ padding: '14px 12px', fontWeight: 600 }}>Rôles</th>
+                <th style={{ padding: '14px 12px', fontWeight: 600 }}>Offre Actuelle</th>
+                <th style={{ padding: '14px 12px', fontWeight: 600 }}>Abonnement / Essai</th>
+                <th style={{ padding: '14px 12px', fontWeight: 600 }}>Statut</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
-                <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
+              {rows.map((row) => (
+                <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', background: 'transparent' }} className="admin-tr">
                   <UserRow row={row} currentEmail={currentEmail} />
                 </tr>
               ))}
-              {filteredRows.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ padding: '28px 12px', color: 'var(--muted-2)' }}>
-                    Aucun compte ne correspond au filtre.
+                  <td colSpan={5} style={{ padding: '40px 20px', color: 'var(--muted-2)', textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    Aucun compte ne correspond à ces critères.
                   </td>
                 </tr>
               )}
@@ -199,10 +409,30 @@ export default function AdminUsersDashboard({ currentEmail, rows }: AdminUsersDa
           </table>
         </div>
 
-        <div style={{ color: 'var(--muted-2)', fontSize: '.82rem', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <span>{filteredRows.length} compte(s) affiché(s)</span>
-          <span>{stats.suspended} suspendu(s) · {stats.revoked} révoqué(s)</span>
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 15, marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
+            <button
+              onClick={() => applyFilters({ page: String(currentPage - 1) })}
+              disabled={currentPage <= 1}
+              className="btn btn-ghost"
+              style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+            >
+              ← Précédent
+            </button>
+            <span style={{ fontSize: '0.86rem', color: 'var(--muted-2)' }}>
+              Page <strong>{currentPage}</strong> sur {totalPages}
+            </span>
+            <button
+              onClick={() => applyFilters({ page: String(currentPage + 1) })}
+              disabled={currentPage >= totalPages}
+              className="btn btn-ghost"
+              style={{ padding: '8px 16px', fontSize: '0.82rem' }}
+            >
+              Suivant →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

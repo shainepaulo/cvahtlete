@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type Stripe from 'stripe'
-import { getStripe, PAID_PLANS, isPaidPlanId, TRIAL_DAYS_MS } from '@/utils/stripe'
+import { getStripe, PAID_PLANS, isPaidPlanId } from '@/utils/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { sendEmail, paymentConfirmationHtml } from '@/utils/email'
 import { siteOriginFromConfig } from '@/utils/site-origin'
@@ -62,23 +62,13 @@ export async function POST(request: NextRequest) {
           ? session.payment_intent
           : session.payment_intent?.id ?? null
 
-      if (plan.trialDays > 0) {
-        // Pro : autorisation posée, paiement unique capturé à J+3 sauf annulation.
-        const trialEndsAt = new Date(Date.now() + TRIAL_DAYS_MS).toISOString()
-        await admin
-          .from('subscriptions')
-          .update({
-            status: 'trialing',
-            plan: plan.id,
-            stripe_payment_intent_id: paymentIntentId,
-            trial_ends_at: trialEndsAt,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', userId)
-        // L'essai donne accès immédiat aux avantages du plan.
-        await admin.from('profiles').update({ plan: plan.id }).eq('id', userId)
-      } else {
-        // Starter : capture immédiate — activation + confirmation « Done ».
+      const { data: sub } = await admin
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (sub?.status !== 'active') {
         await activatePaidPlan(admin, userId, plan.id, paymentIntentId)
         await sendDoneEmail(admin, userId, plan.id, plan.amountCents)
       }
@@ -86,7 +76,6 @@ export async function POST(request: NextRequest) {
     }
 
     case 'payment_intent.succeeded': {
-      // Capture du paiement unique différé (Pro à J+3) — ou re-notification starter.
       const intent = event.data.object
       const userId = intent.metadata?.supabase_user_id
       const planId = intent.metadata?.plan
@@ -96,8 +85,8 @@ export async function POST(request: NextRequest) {
         .select('status')
         .eq('user_id', userId)
         .maybeSingle()
-      // On n'envoie l'e-mail « Done » du Pro qu'à la transition trialing -> active.
-      if (sub?.status === 'trialing') {
+      
+      if (sub?.status !== 'active') {
         await activatePaidPlan(admin, userId, planId, intent.id)
         await sendDoneEmail(admin, userId, planId, PAID_PLANS[planId].amountCents)
       }
