@@ -21,6 +21,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CvData } from "@/app/actions/cv";
 
@@ -224,7 +225,7 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
   // Préchargement : évite le flash blanc au premier changement de photo.
   useEffect(() => {
     photos.forEach((p) => {
-      const img = new Image();
+      const img = new window.Image();
       img.src = p.src;
     });
   }, [photos]);
@@ -327,12 +328,14 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
       {/* ---- Fond : photo plein écran (comme Noa) ou dégradés de la charte -- */}
       {hasGallery ? (
         <div aria-hidden className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={(photos[photoIndex] ?? photos[0]).src}
             alt=""
-            className="h-full w-full object-cover"
+            fill
+            priority
+            unoptimized
             style={{
+              objectFit: "cover",
               objectPosition: (photos[photoIndex] ?? photos[0]).position,
               filter: "brightness(.92) contrast(1.06)",
             }}

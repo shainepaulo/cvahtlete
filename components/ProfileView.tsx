@@ -58,24 +58,37 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
       el.classList.add('in')
       el.querySelectorAll<HTMLElement>('.count').forEach(animateCount)
     }
-    const revealVisible = () => {
-      const vh = window.innerHeight * 0.92
-      root.querySelectorAll<HTMLElement>('.reveal:not(.in)').forEach((el) => {
-        if (el.getBoundingClientRect().top < vh) revealEl(el)
-      })
-    }
-    let rafId = 0
-    const onScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(revealVisible) }
 
     const io = typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver((entries) => {
           entries.forEach((e) => { if (e.isIntersecting) { revealEl(e.target); io!.unobserve(e.target) } })
         }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' })
       : null
-    root.querySelectorAll<HTMLElement>('.reveal').forEach((el) => io ? io.observe(el) : revealEl(el))
-    window.addEventListener('scroll', onScroll, { passive: true })
-    revealVisible()
-    return () => { if (io) io.disconnect(); window.removeEventListener('scroll', onScroll); cancelAnimationFrame(rafId) }
+
+    let onScroll: (() => void) | null = null
+    let rafId = 0
+
+    if (io) {
+      root.querySelectorAll<HTMLElement>('.reveal').forEach((el) => io.observe(el))
+    } else {
+      const revealVisible = () => {
+        const vh = window.innerHeight * 0.92
+        root.querySelectorAll<HTMLElement>('.reveal:not(.in)').forEach((el) => {
+          if (el.getBoundingClientRect().top < vh) revealEl(el)
+        })
+      }
+      onScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(revealVisible) }
+      window.addEventListener('scroll', onScroll, { passive: true })
+      revealVisible()
+    }
+
+    return () => {
+      if (io) io.disconnect()
+      if (onScroll) {
+        window.removeEventListener('scroll', onScroll)
+        cancelAnimationFrame(rafId)
+      }
+    }
   }, [cv])
 
   async function share() {
@@ -174,6 +187,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
                 alt={`${cv.first} ${cv.last}`}
                 fill
                 unoptimized
+                priority
                 style={{ objectFit: 'cover', transform: cropTf(cx, cy, cz), transformOrigin: 'center' }}
               />
             ) : (
