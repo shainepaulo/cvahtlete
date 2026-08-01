@@ -2,23 +2,31 @@
 
 import { useEffect, useRef } from 'react'
 
+interface AnimatableElement extends HTMLElement {
+  _intervalId?: NodeJS.Timeout;
+}
+
 function animateCount(el: HTMLElement) {
-  const raw = el.textContent || ''
-  const num = parseFloat(raw.replace(/[^\d.]/g, ''))
+  const targetVal = el.dataset.val || el.textContent || ''
+  const num = parseFloat(targetVal.replace(/[^\d.]/g, ''))
   if (isNaN(num) || num === 0) return
-  const suffix = raw.replace(/[\d.]/g, '')
-  const dur = 1200
-  const steps = 40
+
+  const element = el as AnimatableElement
+  if (element._intervalId) {
+    clearInterval(element._intervalId)
+  }
+
+  const suffix = targetVal.replace(/[\d.]/g, '')
+  const dur = 1200, steps = 40
   let i = 0
-  el.classList.add('counting')
-  const iv = setInterval(() => {
+  element._intervalId = setInterval(() => {
     i++
     const v = Math.round((num / steps) * i * 10) / 10
     el.textContent = (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + suffix
     if (i >= steps) {
-      el.textContent = raw
-      el.classList.remove('counting')
-      clearInterval(iv)
+      el.textContent = targetVal
+      clearInterval(element._intervalId)
+      delete element._intervalId
     }
   }, dur / steps)
 }

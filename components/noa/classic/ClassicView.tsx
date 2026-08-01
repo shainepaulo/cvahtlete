@@ -81,7 +81,7 @@ export function ClassicView({ profile, adminForceMask, isAdminViewer }: Props) {
             {classic.stats.map((s, i) => (
               <div key={s.label} className="p-stat reveal" data-delay={String(i % 4)}>
                 <div className="v">
-                  <span className="count">{s.value}</span>
+                  <span className="count" data-val={s.value}>{s.value}</span>
                   {s.unit && <span className="u">{s.unit}</span>}
                 </div>
                 <div className="l">{s.label}</div>

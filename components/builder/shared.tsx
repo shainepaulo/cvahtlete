@@ -87,7 +87,7 @@ export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[
     <>
       <div className="stat-rows">
         {rows.map((row, i) => (
-          <div key={i} className="stat-row">
+          <div key={i} className={`stat-row ${kind}-row`}>
             {ROWDEF[kind].map(([k, ph]) => {
               const short = k === 'icon' || k === 'unit' || k === 'count'
               return (

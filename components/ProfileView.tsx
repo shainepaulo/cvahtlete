@@ -24,18 +24,32 @@ function cropTf(x = 50, y = 50, z = 1.4) {
   return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`
 }
 
+interface AnimatableElement extends HTMLElement {
+  _intervalId?: NodeJS.Timeout;
+}
+
 function animateCount(el: HTMLElement) {
-  const raw = el.textContent || ''
-  const num = parseFloat(raw.replace(/[^\d.]/g, ''))
+  const targetVal = el.dataset.val || el.textContent || ''
+  const num = parseFloat(targetVal.replace(/[^\d.]/g, ''))
   if (isNaN(num) || num === 0) return
-  const suffix = raw.replace(/[\d.]/g, '')
+
+  const element = el as AnimatableElement
+  if (element._intervalId) {
+    clearInterval(element._intervalId)
+  }
+
+  const suffix = targetVal.replace(/[\d.]/g, '')
   const dur = 1200, steps = 40
   let i = 0
-  const iv = setInterval(() => {
+  element._intervalId = setInterval(() => {
     i++
     const v = Math.round((num / steps) * i * 10) / 10
     el.textContent = (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + suffix
-    if (i >= steps) { el.textContent = raw; clearInterval(iv) }
+    if (i >= steps) {
+      el.textContent = targetVal
+      clearInterval(element._intervalId)
+      delete element._intervalId
+    }
   }, dur / steps)
 }
 
@@ -236,7 +250,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
               {stats.map((s, i) => (
                 <div key={i} className="p-stat reveal" data-delay={String(i % 4)}>
                   <div className="v">
-                    <span className="count">{s.value}</span>
+                    <span className="count" data-val={s.value}>{s.value}</span>
                     {s.unit && <span className="u">{s.unit}</span>}
                   </div>
                   <div className="l">{s.label}</div>
