@@ -79,30 +79,30 @@ export function ClassicView({ profile, adminForceMask, isAdminViewer }: Props) {
           </div>
         </article>
 
-        <section className="p-block">
-          <h2 className="p-block-title">À propos</h2>
-          <p className="p-bio reveal">{identity.bio}</p>
-        </section>
-
-        {classic.showCharacteristics && classic.characteristics && Object.keys(classic.characteristics).length > 0 && (
+        {((identity.bio) || (classic.showCharacteristics && classic.characteristics && Object.keys(classic.characteristics).length > 0)) && (
           <section className="p-block">
-            <h2 className="p-block-title">Caractéristiques</h2>
-            <div className="p-characteristics reveal">
-              <table className="char-table">
-                <tbody>
-                  {Object.entries(classic.characteristics).map(([k, v]) => {
-                    if (!v?.trim()) return null
-                    const label = CHAR_LABELS[k] || k
-                    return (
-                      <tr key={k}>
-                        <td className="char-label">{label}</td>
-                        <td className="char-val">{v}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <h2 className="p-block-title">
+              {classic.showCharacteristics ? 'Caractéristiques' : 'À propos'}
+            </h2>
+            {identity.bio && <p className="p-bio reveal" style={{ marginBottom: classic.showCharacteristics && classic.characteristics && Object.values(classic.characteristics).some(v => v?.trim()) ? '20px' : '0' }}>{identity.bio}</p>}
+            {classic.showCharacteristics && classic.characteristics && Object.keys(classic.characteristics).length > 0 && (
+              <div className="p-characteristics reveal">
+                <table className="char-table" style={{ marginTop: identity.bio ? '0' : '12px' }}>
+                  <tbody>
+                    {Object.entries(classic.characteristics).map(([k, v]) => {
+                      if (!v?.trim()) return null
+                      const label = CHAR_LABELS[k] || k
+                      return (
+                        <tr key={k}>
+                          <td className="char-label">{label}</td>
+                          <td className="char-val">{v}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 

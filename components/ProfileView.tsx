@@ -245,32 +245,30 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </div>
         </article>
 
-        {cv.bio && (
+        {((cv.bio) || (cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0)) && (
           <section className="p-block">
-            <h2 className="p-block-title">À propos</h2>
-            <p className="p-bio reveal">{cv.bio}</p>
-          </section>
-        )}
-
-        {cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0 && (
-          <section className="p-block">
-            <h2 className="p-block-title">Caractéristiques</h2>
-            <div className="p-characteristics reveal">
-              <table className="char-table">
-                <tbody>
-                  {Object.entries(cv.characteristics).map(([k, v]) => {
-                    if (!v?.trim()) return null
-                    const label = CHAR_LABELS[k] || k
-                    return (
-                      <tr key={k}>
-                        <td className="char-label">{label}</td>
-                        <td className="char-val">{v}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <h2 className="p-block-title">
+              {cv.showCharacteristics ? 'Caractéristiques' : 'À propos'}
+            </h2>
+            {cv.bio && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && Object.values(cv.characteristics).some(v => v?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
+            {cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0 && (
+              <div className="p-characteristics reveal">
+                <table className="char-table" style={{ marginTop: cv.bio ? '0' : '12px' }}>
+                  <tbody>
+                    {Object.entries(cv.characteristics).map(([k, v]) => {
+                      if (!v?.trim()) return null
+                      const label = CHAR_LABELS[k] || k
+                      return (
+                        <tr key={k}>
+                          <td className="char-label">{label}</td>
+                          <td className="char-val">{v}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 
