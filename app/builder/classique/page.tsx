@@ -91,10 +91,18 @@ function ClassiqueContent() {
 
   const cvSlug = b.user.cv?.slug
 
+  const isPresetSport = Object.keys(SPORTS).filter(k => k !== 'Autre').includes(b.sport)
+  const selectValue = isPresetSport ? b.sport : 'Autre'
+
   function onSportChange(s: string) {
-    b.setSport(s)
-    const def = SPORTS[s] || SPORTS.Autre
-    b.setColorA(def.a); b.setColorB(def.b)
+    if (s === 'Autre') {
+      b.setSport('Autre')
+      b.setColorA(SPORTS.Autre.a); b.setColorB(SPORTS.Autre.b)
+    } else {
+      b.setSport(s)
+      const def = SPORTS[s]
+      b.setColorA(def.a); b.setColorB(def.b)
+    }
   }
 
   return (
@@ -161,9 +169,18 @@ function ClassiqueContent() {
             <div className="row2">
               <div className="field">
                 <label>Sport</label>
-                <select value={b.sport} onChange={(e) => onSportChange(e.target.value)}>
+                <select value={selectValue} onChange={(e) => onSportChange(e.target.value)}>
                   {Object.keys(SPORTS).map((s) => <option key={s}>{s}</option>)}
                 </select>
+                {selectValue === 'Autre' && (
+                  <input 
+                    style={{ marginTop: 8 }}
+                    value={b.sport === 'Autre' ? '' : b.sport} 
+                    onChange={(e) => b.setSport(e.target.value || 'Autre')} 
+                    placeholder="Saisis ton sport (ex: Handball)" 
+                    maxLength={LIMITS.discipline}
+                  />
+                )}
               </div>
               <div className="field">
                 <label>Discipline / poste</label>
