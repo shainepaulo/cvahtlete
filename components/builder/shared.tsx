@@ -131,6 +131,10 @@ export function CropBox({
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadErr("Taille max : 2 Mo.")
+      return
+    }
     setUploading(true); setUploadErr('')
     const fd = new FormData(); fd.append('image', file)
     const result = await uploadImage(fd)

@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 
 const BUCKET = "cv-images";
-const MAX_BYTES = 5 * 1024 * 1024; // 5 Mo
+const MAX_BYTES = 2 * 1024 * 1024; // 2 Mo
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"]);
 
 export async function uploadImage(
@@ -17,7 +17,7 @@ export async function uploadImage(
 
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) return { error: "Fichier manquant." };
-  if (file.size > MAX_BYTES) return { error: "Taille max : 5 Mo." };
+  if (file.size > MAX_BYTES) return { error: "Taille max : 2 Mo." };
   if (!ALLOWED_TYPES.has(file.type)) return { error: "Format non supporté (jpg, png, webp, avif, gif)." };
 
   const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z]/g, "") || "jpg";
