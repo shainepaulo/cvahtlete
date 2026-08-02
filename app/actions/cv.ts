@@ -36,6 +36,8 @@ export interface CvData {
   links?: unknown[];
   visibility?: string;
   blocked?: boolean;
+  characteristics?: Record<string, string>;
+  showCharacteristics?: boolean;
 }
 
 const EMOJI: Record<string, string> = {
@@ -76,6 +78,8 @@ function rowToCv(row: Record<string, unknown>): CvData {
     career: (row.career as unknown[]) ?? [],
     links: normalizePublicLinks(row.links),
     visibility: String(row.visibility ?? "private"),
+    characteristics: (row.characteristics as Record<string, string>) ?? {},
+    showCharacteristics: !!row.show_characteristics,
   };
 }
 
@@ -115,6 +119,8 @@ export interface UpsertCvInput {
   career?: unknown[];
   links?: unknown[];
   visibility?: "private" | "public";
+  characteristics?: Record<string, string>;
+  showCharacteristics?: boolean;
 }
 
 export interface UpsertCvResult {
@@ -208,6 +214,8 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     colors: input.colors ?? { a: "#8bb6ff", b: "#79e0cf" },
     visibility: input.visibility ?? "private",
     cinematic_enabled,
+    characteristics: input.characteristics ?? {},
+    show_characteristics: !!input.showCharacteristics,
   };
 
   if (existing) {

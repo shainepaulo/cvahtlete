@@ -64,15 +64,13 @@ export async function POST(req: NextRequest) {
       const stats: Array<{ label: string; value: string; unit: string }> = []
       const career: Array<{ year: string; club: string; detail: string }> = []
 
-      // Ajouter les caractéristiques physiques aux statistiques
-      if (height) {
-        stats.push({ label: 'Taille', value: height.replace(/[^\d]/g, ''), unit: 'cm' })
-      }
-      if (weight) {
-        stats.push({ label: 'Poids', value: weight.replace(/[^\d]/g, ''), unit: 'kg' })
-      }
-      if (dob) {
-        stats.push({ label: 'Naissance', value: dob, unit: '' })
+      const characteristics = {
+        nationalite: nationality || '',
+        dob: dob || '',
+        taille: height ? `${height.replace(/[^\d]/g, '')} cm` : '',
+        poids: weight ? `${weight.replace(/[^\d]/g, '')} kg` : '',
+        pied_fort: '',
+        club_actuel: currentClub || ''
       }
 
       if (players_id && key) {
@@ -140,7 +138,8 @@ export async function POST(req: NextRequest) {
         avatar,
         stats,
         career,
-        palmares: []
+        palmares: [],
+        characteristics
       })
 
     } else if (url.includes('transfermarkt')) {
@@ -206,13 +205,15 @@ export async function POST(req: NextRequest) {
 
       const stats: Array<{ label: string; value: string; unit: string }> = []
       
-      // Ajouter les caractéristiques physiques aux statistiques
-      if (height) {
-        stats.push({ label: 'Taille', value: height.replace(/[^\d,.]/g, ''), unit: 'm' })
+      const characteristics = {
+        nationalite: nationality || '',
+        dob: dob ? (dob.split(' ')[0] || dob) : '',
+        taille: height ? `${height.replace(/[^\d,.]/g, '')} m` : '',
+        poids: '',
+        pied_fort: foot || '',
+        club_actuel: currentClub || ''
       }
-      if (dob) {
-        stats.push({ label: 'Naissance', value: dob.split(' ')[0] || dob, unit: '' })
-      }
+
       if (marketValue) {
         const valPart = marketValue.split(' ')[0]
         stats.push({ label: 'Valeur marchande', value: valPart, unit: marketValue.includes('mio') || marketValue.includes('m') ? 'M€' : '€' })
@@ -221,9 +222,6 @@ export async function POST(req: NextRequest) {
         const capsParts = capsGoals.split(/[\/\s]+/)
         if (capsParts[0]) stats.push({ label: 'Sélections', value: capsParts[0].trim(), unit: '' })
         if (capsParts[1]) stats.push({ label: 'Buts Inter.', value: capsParts[1].trim(), unit: '' })
-      }
-      if (foot) {
-        stats.push({ label: 'Pied fort', value: foot, unit: '' })
       }
 
       const career: Array<{ year: string; club: string; detail: string }> = []
@@ -246,7 +244,8 @@ export async function POST(req: NextRequest) {
         avatar,
         stats,
         career,
-        palmares: []
+        palmares: [],
+        characteristics
       })
 
     } else {

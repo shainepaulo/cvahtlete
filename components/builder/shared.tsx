@@ -228,6 +228,10 @@ export function useCvBuilder(nextPath: string) {
   const [stats, setStats] = useState<Row[]>([{ label: '', value: '', unit: '' }])
   const [palmares, setPalmares] = useState<Row[]>([{ icon: '🏆', name: '', count: '' }])
   const [career, setCareer] = useState<Row[]>([{ year: '', club: '', detail: '' }])
+  const [characteristics, setCharacteristics] = useState<Record<string, string>>({
+    nationalite: '', dob: '', taille: '', poids: '', pied_fort: '', club_actuel: ''
+  })
+  const [showCharacteristics, setShowCharacteristics] = useState(false)
 
   // Auth + pré-remplissage depuis la DB
   useEffect(() => {
@@ -268,6 +272,10 @@ export function useCvBuilder(nextPath: string) {
       setInstagram(lks.find((l) => l.icon === 'instagram')?.url || '')
       setXUrl(lks.find((l) => l.icon === 'x')?.url || '')
       setVisibility(cv.visibility || 'private')
+      setCharacteristics(cv.characteristics || {
+        nationalite: '', dob: '', taille: '', poids: '', pied_fort: '', club_actuel: ''
+      })
+      setShowCharacteristics(!!cv.showCharacteristics)
     })
   }, [router, nextPath])
 
@@ -290,9 +298,12 @@ export function useCvBuilder(nextPath: string) {
       xUrl && { label: 'X', icon: 'x', url: xUrl },
     ].filter(Boolean),
     visibility, slug: user?.cv?.slug,
+    characteristics,
+    showCharacteristics,
   }), [first, last, sport, discipline, tagline, bio, location, avatar,
        photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
-       colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug])
+       colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug,
+       characteristics, showCharacteristics])
 
   async function save() {
     if (!first || !last) {
@@ -314,6 +325,8 @@ export function useCvBuilder(nextPath: string) {
         xUrl && { label: 'X', icon: 'x', url: xUrl },
       ].filter(Boolean) as unknown[],
       visibility: visibility as 'private' | 'public',
+      characteristics,
+      showCharacteristics,
     })
     setSaving(false)
     if (result.error) { setAlertMsg({ msg: result.error, ok: false }); return }
@@ -336,5 +349,6 @@ export function useCvBuilder(nextPath: string) {
     cineBg, setCineBg, cineBgPosX, setCineBgPosX, cineBgPosY, setCineBgPosY,
     cropZoomCineBg, setCropZoomCineBg,
     stats, setStats, palmares, setPalmares, career, setCareer,
+    characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
   }
 }

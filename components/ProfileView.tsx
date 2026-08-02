@@ -19,6 +19,15 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
+const CHAR_LABELS: Record<string, string> = {
+  nationalite: 'Nationalité',
+  dob: 'Né(e) le',
+  taille: 'Taille',
+  poids: 'Poids',
+  pied_fort: 'Pied / Main fort',
+  club_actuel: 'Club actuel',
+}
+
 function cropTf(x = 50, y = 50, z = 1.4) {
   const m = (z - 1) / 2 * 100
   return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`
@@ -240,6 +249,28 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           <section className="p-block">
             <h2 className="p-block-title">À propos</h2>
             <p className="p-bio reveal">{cv.bio}</p>
+          </section>
+        )}
+
+        {cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0 && (
+          <section className="p-block">
+            <h2 className="p-block-title">Caractéristiques</h2>
+            <div className="p-characteristics reveal">
+              <table className="char-table">
+                <tbody>
+                  {Object.entries(cv.characteristics).map(([k, v]) => {
+                    if (!v?.trim()) return null
+                    const label = CHAR_LABELS[k] || k
+                    return (
+                      <tr key={k}>
+                        <td className="char-label">{label}</td>
+                        <td className="char-val">{v}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
 
