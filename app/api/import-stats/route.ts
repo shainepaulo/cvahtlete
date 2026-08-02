@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
         else if (label.includes('club actuel')) currentClub = value
       })
 
+      let squadNumber = $('.num-maillot, .num, .numero, .player-number, .jersey-number').first().text().trim().replace(/#/g, '')
+      if (!squadNumber) {
+        const numMatch = html.match(/#(\d+)/)
+        if (numMatch) squadNumber = numMatch[1]
+      }
+
       // Récupérer les paramètres AJAX pour les stats
       const players_id = $('input[name="players_id"]').val() as string
       const key = $('input[name="key"]').val() as string
@@ -64,14 +70,14 @@ export async function POST(req: NextRequest) {
       const stats: Array<{ label: string; value: string; unit: string }> = []
       const career: Array<{ year: string; club: string; detail: string }> = []
 
-      const characteristics = {
-        nationalite: nationality || '',
-        dob: dob || '',
-        taille: height ? `${height.replace(/[^\d]/g, '')} cm` : '',
-        poids: weight ? `${weight.replace(/[^\d]/g, '')} kg` : '',
-        pied_fort: '',
-        club_actuel: currentClub || ''
-      }
+      const characteristics = [
+        nationality && { name: 'Nationalité', value: nationality },
+        dob && { name: 'Né le', value: dob },
+        height && { name: 'Taille', value: `${height.replace(/[^\d]/g, '')} cm` },
+        weight && { name: 'Poids', value: `${weight.replace(/[^\d]/g, '')} kg` },
+        currentClub && { name: 'Club actuel', value: currentClub },
+        squadNumber && { name: 'Numéro', value: `#${squadNumber}` }
+      ].filter(Boolean) as Array<{ name: string; value: string }>
 
       if (players_id && key) {
         const body = new URLSearchParams({
@@ -203,16 +209,22 @@ export async function POST(req: NextRequest) {
         if (matches) marketValue = matches[0]
       }
 
+      let squadNumber = $('.data-header__shirt-number').text().trim().replace(/#/g, '')
+      if (!squadNumber) {
+        const numMatch = html.match(/#(\d+)/)
+        if (numMatch) squadNumber = numMatch[1]
+      }
+
       const stats: Array<{ label: string; value: string; unit: string }> = []
       
-      const characteristics = {
-        nationalite: nationality || '',
-        dob: dob ? (dob.split(' ')[0] || dob) : '',
-        taille: height ? `${height.replace(/[^\d,.]/g, '')} m` : '',
-        poids: '',
-        pied_fort: foot || '',
-        club_actuel: currentClub || ''
-      }
+      const characteristics = [
+        nationality && { name: 'Nationalité', value: nationality },
+        dob && { name: 'Né le', value: dob.split(' ')[0] || dob },
+        height && { name: 'Taille', value: `${height.replace(/[^\d,.]/g, '')} m` },
+        foot && { name: 'Pied fort', value: foot },
+        currentClub && { name: 'Club actuel', value: currentClub },
+        squadNumber && { name: 'Numéro', value: `#${squadNumber}` }
+      ].filter(Boolean) as Array<{ name: string; value: string }>
 
       if (marketValue) {
         const valPart = marketValue.split(' ')[0]
