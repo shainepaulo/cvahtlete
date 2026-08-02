@@ -5,6 +5,7 @@ import type { NoaProfile } from '@/types/noa'
 import { useReveal } from '@/components/noa/shared/useReveal'
 import { ClassicDossier } from '@/components/noa/classic/ClassicDossier'
 
+
 interface Props {
   profile: NoaProfile
   adminForceMask: boolean
@@ -70,10 +71,31 @@ export function ClassicView({ profile, adminForceMask, isAdminViewer }: Props) {
           </div>
         </article>
 
-        <section className="p-block">
-          <h2 className="p-block-title">À propos</h2>
-          <p className="p-bio reveal">{identity.bio}</p>
-        </section>
+        {((identity.bio) || (classic.showCharacteristics && classic.characteristics && classic.characteristics.length > 0 && classic.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
+          <section className="p-block">
+            <h2 className="p-block-title">
+              {classic.showCharacteristics ? 'Caractéristiques' : 'À propos'}
+            </h2>
+            {identity.bio && <p className="p-bio reveal" style={{ marginBottom: classic.showCharacteristics && classic.characteristics && classic.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{identity.bio}</p>}
+            {classic.showCharacteristics && classic.characteristics && classic.characteristics.length > 0 && (
+              <div className="p-characteristics reveal">
+                <table className="char-table" style={{ marginTop: identity.bio ? '0' : '12px' }}>
+                  <tbody>
+                    {classic.characteristics.map((c, idx) => {
+                      if (!c.name?.trim() || !c.value?.trim()) return null
+                      return (
+                        <tr key={idx}>
+                          <td className="char-label">{c.name}</td>
+                          <td className="char-val">{c.value}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="p-block">
           <h2 className="p-block-title">Statistiques clés</h2>
@@ -81,7 +103,7 @@ export function ClassicView({ profile, adminForceMask, isAdminViewer }: Props) {
             {classic.stats.map((s, i) => (
               <div key={s.label} className="p-stat reveal" data-delay={String(i % 4)}>
                 <div className="v">
-                  <span className="count">{s.value}</span>
+                  <span className="count" data-val={s.value}>{s.value}</span>
                   {s.unit && <span className="u">{s.unit}</span>}
                 </div>
                 <div className="l">{s.label}</div>

@@ -53,6 +53,12 @@ export async function POST(req: NextRequest) {
         else if (label.includes('club actuel')) currentClub = value
       })
 
+      let squadNumber = $('.num-maillot, .num, .numero, .player-number, .jersey-number').first().text().trim().replace(/#/g, '')
+      if (!squadNumber) {
+        const numMatch = html.match(/#(\d+)/)
+        if (numMatch) squadNumber = numMatch[1]
+      }
+
       // Récupérer les paramètres AJAX pour les stats
       const players_id = $('input[name="players_id"]').val() as string
       const key = $('input[name="key"]').val() as string
@@ -64,16 +70,14 @@ export async function POST(req: NextRequest) {
       const stats: Array<{ label: string; value: string; unit: string }> = []
       const career: Array<{ year: string; club: string; detail: string }> = []
 
-      // Ajouter les caractéristiques physiques aux statistiques
-      if (height) {
-        stats.push({ label: 'Taille', value: height.replace(/[^\d]/g, ''), unit: 'cm' })
-      }
-      if (weight) {
-        stats.push({ label: 'Poids', value: weight.replace(/[^\d]/g, ''), unit: 'kg' })
-      }
-      if (dob) {
-        stats.push({ label: 'Naissance', value: dob, unit: '' })
-      }
+      const characteristics = [
+        nationality && { name: 'Nationalité', value: nationality },
+        dob && { name: 'Né le', value: dob },
+        height && { name: 'Taille', value: `${height.replace(/[^\d]/g, '')} cm` },
+        weight && { name: 'Poids', value: `${weight.replace(/[^\d]/g, '')} kg` },
+        currentClub && { name: 'Club actuel', value: currentClub },
+        squadNumber && { name: 'Numéro', value: `#${squadNumber}` }
+      ].filter(Boolean) as Array<{ name: string; value: string }>
 
       if (players_id && key) {
         const body = new URLSearchParams({
@@ -140,7 +144,8 @@ export async function POST(req: NextRequest) {
         avatar,
         stats,
         career,
-        palmares: []
+        palmares: [],
+        characteristics
       })
 
     } else if (url.includes('transfermarkt')) {
@@ -204,15 +209,23 @@ export async function POST(req: NextRequest) {
         if (matches) marketValue = matches[0]
       }
 
+      let squadNumber = $('.data-header__shirt-number').text().trim().replace(/#/g, '')
+      if (!squadNumber) {
+        const numMatch = html.match(/#(\d+)/)
+        if (numMatch) squadNumber = numMatch[1]
+      }
+
       const stats: Array<{ label: string; value: string; unit: string }> = []
       
-      // Ajouter les caractéristiques physiques aux statistiques
-      if (height) {
-        stats.push({ label: 'Taille', value: height.replace(/[^\d,.]/g, ''), unit: 'm' })
-      }
-      if (dob) {
-        stats.push({ label: 'Naissance', value: dob.split(' ')[0] || dob, unit: '' })
-      }
+      const characteristics = [
+        nationality && { name: 'Nationalité', value: nationality },
+        dob && { name: 'Né le', value: dob.split(' ')[0] || dob },
+        height && { name: 'Taille', value: `${height.replace(/[^\d,.]/g, '')} m` },
+        foot && { name: 'Pied fort', value: foot },
+        currentClub && { name: 'Club actuel', value: currentClub },
+        squadNumber && { name: 'Numéro', value: `#${squadNumber}` }
+      ].filter(Boolean) as Array<{ name: string; value: string }>
+
       if (marketValue) {
         const valPart = marketValue.split(' ')[0]
         stats.push({ label: 'Valeur marchande', value: valPart, unit: marketValue.includes('mio') || marketValue.includes('m') ? 'M€' : '€' })
@@ -221,9 +234,6 @@ export async function POST(req: NextRequest) {
         const capsParts = capsGoals.split(/[\/\s]+/)
         if (capsParts[0]) stats.push({ label: 'Sélections', value: capsParts[0].trim(), unit: '' })
         if (capsParts[1]) stats.push({ label: 'Buts Inter.', value: capsParts[1].trim(), unit: '' })
-      }
-      if (foot) {
-        stats.push({ label: 'Pied fort', value: foot, unit: '' })
       }
 
       const career: Array<{ year: string; club: string; detail: string }> = []
@@ -246,7 +256,8 @@ export async function POST(req: NextRequest) {
         avatar,
         stats,
         career,
-        palmares: []
+        palmares: [],
+        characteristics
       })
 
     } else {

@@ -19,23 +19,38 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
+
 function cropTf(x = 50, y = 50, z = 1.4) {
   const m = (z - 1) / 2 * 100
   return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`
 }
 
+interface AnimatableElement extends HTMLElement {
+  _intervalId?: NodeJS.Timeout;
+}
+
 function animateCount(el: HTMLElement) {
-  const raw = el.textContent || ''
-  const num = parseFloat(raw.replace(/[^\d.]/g, ''))
+  const targetVal = el.dataset.val || el.textContent || ''
+  const num = parseFloat(targetVal.replace(/[^\d.]/g, ''))
   if (isNaN(num) || num === 0) return
-  const suffix = raw.replace(/[\d.]/g, '')
+
+  const element = el as AnimatableElement
+  if (element._intervalId) {
+    clearInterval(element._intervalId)
+  }
+
+  const suffix = targetVal.replace(/[\d.]/g, '')
   const dur = 1200, steps = 40
   let i = 0
-  const iv = setInterval(() => {
+  element._intervalId = setInterval(() => {
     i++
     const v = Math.round((num / steps) * i * 10) / 10
     el.textContent = (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + suffix
-    if (i >= steps) { el.textContent = raw; clearInterval(iv) }
+    if (i >= steps) {
+      el.textContent = targetVal
+      clearInterval(element._intervalId)
+      delete element._intervalId
+    }
   }, dur / steps)
 }
 
@@ -222,10 +237,29 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </div>
         </article>
 
-        {cv.bio && (
+        {((cv.bio) || (cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
           <section className="p-block">
-            <h2 className="p-block-title">À propos</h2>
-            <p className="p-bio reveal">{cv.bio}</p>
+            <h2 className="p-block-title">
+              {cv.showCharacteristics ? 'Caractéristiques' : 'À propos'}
+            </h2>
+            {cv.bio && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
+            {cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && (
+              <div className="p-characteristics reveal">
+                <table className="char-table" style={{ marginTop: cv.bio ? '0' : '12px' }}>
+                  <tbody>
+                    {cv.characteristics.map((c, idx) => {
+                      if (!c.name?.trim() || !c.value?.trim()) return null
+                      return (
+                        <tr key={idx}>
+                          <td className="char-label">{c.name}</td>
+                          <td className="char-val">{c.value}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 
@@ -236,7 +270,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
               {stats.map((s, i) => (
                 <div key={i} className="p-stat reveal" data-delay={String(i % 4)}>
                   <div className="v">
-                    <span className="count">{s.value}</span>
+                    <span className="count" data-val={s.value}>{s.value}</span>
                     {s.unit && <span className="u">{s.unit}</span>}
                   </div>
                   <div className="l">{s.label}</div>

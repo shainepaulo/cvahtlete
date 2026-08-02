@@ -58,6 +58,7 @@ export interface BuilderUser {
 }
 
 export const ROWDEF: Record<string, [string, string][]> = {
+  characteristics: [['name', 'Libellé'], ['value', 'Valeur']],
   stats:    [['label', 'Libellé'], ['value', 'Valeur'], ['unit', 'Unité']],
   palmares: [['icon', '🏆'], ['name', 'Titre'], ['count', '×']],
   career:   [['year', 'Année'], ['club', 'Étape'], ['detail', 'Détail']],
@@ -70,7 +71,7 @@ export function cropTf(x = 50, y = 50, z = 1.4) {
   return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`
 }
 
-export type RowSection = 'stats' | 'palmares' | 'career'
+export type RowSection = 'characteristics' | 'stats' | 'palmares' | 'career'
 
 /** Lignes dynamiques bornées (12 max) — libellés et valeurs à longueur limitée. */
 export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[]; onChange: (rows: Row[]) => void }) {
@@ -87,7 +88,7 @@ export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[
     <>
       <div className="stat-rows">
         {rows.map((row, i) => (
-          <div key={i} className="stat-row">
+          <div key={i} className={`stat-row ${kind}-row`}>
             {ROWDEF[kind].map(([k, ph]) => {
               const short = k === 'icon' || k === 'unit' || k === 'count'
               return (
@@ -228,6 +229,15 @@ export function useCvBuilder(nextPath: string) {
   const [stats, setStats] = useState<Row[]>([{ label: '', value: '', unit: '' }])
   const [palmares, setPalmares] = useState<Row[]>([{ icon: '🏆', name: '', count: '' }])
   const [career, setCareer] = useState<Row[]>([{ year: '', club: '', detail: '' }])
+  const [characteristics, setCharacteristics] = useState<Row[]>([
+    { name: 'Nationalité', value: '' },
+    { name: 'Né le', value: '' },
+    { name: 'Taille', value: '' },
+    { name: 'Poids', value: '' },
+    { name: 'Club actuel', value: '' },
+    { name: 'Numéro', value: '' }
+  ])
+  const [showCharacteristics, setShowCharacteristics] = useState(false)
 
   // Auth + pré-remplissage depuis la DB
   useEffect(() => {
@@ -268,6 +278,16 @@ export function useCvBuilder(nextPath: string) {
       setInstagram(lks.find((l) => l.icon === 'instagram')?.url || '')
       setXUrl(lks.find((l) => l.icon === 'x')?.url || '')
       setVisibility(cv.visibility || 'private')
+      const charData = (cv.characteristics as Row[]) ?? []
+      setCharacteristics(charData.length ? charData : [
+        { name: 'Nationalité', value: '' },
+        { name: 'Né le', value: '' },
+        { name: 'Taille', value: '' },
+        { name: 'Poids', value: '' },
+        { name: 'Club actuel', value: '' },
+        { name: 'Numéro', value: '' }
+      ])
+      setShowCharacteristics(!!cv.showCharacteristics)
     })
   }, [router, nextPath])
 
@@ -290,9 +310,12 @@ export function useCvBuilder(nextPath: string) {
       xUrl && { label: 'X', icon: 'x', url: xUrl },
     ].filter(Boolean),
     visibility, slug: user?.cv?.slug,
+    characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()),
+    showCharacteristics,
   }), [first, last, sport, discipline, tagline, bio, location, avatar,
        photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
-       colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug])
+       colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug,
+       characteristics, showCharacteristics])
 
   async function save() {
     if (!first || !last) {
@@ -314,6 +337,8 @@ export function useCvBuilder(nextPath: string) {
         xUrl && { label: 'X', icon: 'x', url: xUrl },
       ].filter(Boolean) as unknown[],
       visibility: visibility as 'private' | 'public',
+      characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()) as Array<{ name: string; value: string }>,
+      showCharacteristics,
     })
     setSaving(false)
     if (result.error) { setAlertMsg({ msg: result.error, ok: false }); return }
@@ -336,5 +361,6 @@ export function useCvBuilder(nextPath: string) {
     cineBg, setCineBg, cineBgPosX, setCineBgPosX, cineBgPosY, setCineBgPosY,
     cropZoomCineBg, setCropZoomCineBg,
     stats, setStats, palmares, setPalmares, career, setCareer,
+    characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
   }
 }

@@ -91,6 +91,8 @@ export interface NoaClassicData {
   experience: ProfessionalExperience[]
   languages: LanguageSkill[]
   references: Reference[]
+  characteristics?: Array<{ name: string; value: string }>
+  showCharacteristics?: boolean
 }
 
 export interface GalleryPhoto {

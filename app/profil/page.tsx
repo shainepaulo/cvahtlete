@@ -18,6 +18,7 @@ interface BuilderMsg {
   cineBg?: string; verified?: boolean
   stats?: unknown[]; palmares?: unknown[]; career?: unknown[]; links?: unknown[]
   visibility?: string; slug?: string
+  characteristics?: Array<{ name: string; value: string }>; showCharacteristics?: boolean
 }
 
 function previewToCv(b: BuilderMsg): CvData {
@@ -33,6 +34,8 @@ function previewToCv(b: BuilderMsg): CvData {
     stats: b.stats ?? [], palmares: b.palmares ?? [],
     career: b.career ?? [], links: b.links ?? [],
     visibility: b.visibility,
+    characteristics: b.characteristics,
+    showCharacteristics: b.showCharacteristics,
   }
 }
 

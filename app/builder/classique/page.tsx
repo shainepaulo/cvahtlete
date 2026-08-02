@@ -50,6 +50,10 @@ function ClassiqueContent() {
       if (data.stats && data.stats.length) b.setStats(data.stats)
       if (data.palmares && data.palmares.length) b.setPalmares(data.palmares)
       if (data.career && data.career.length) b.setCareer(data.career)
+      if (data.characteristics) {
+        b.setCharacteristics(data.characteristics)
+        b.setShowCharacteristics(true)
+      }
 
       setShowImportModal(false)
       setImportUrl('')
@@ -190,9 +194,34 @@ function ClassiqueContent() {
             </div>
           </div>
 
-          {/* 2 — Couleurs */}
+          {/* 2 — Caractéristiques */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">2</span><h3>Couleurs</h3></div>
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">2</span>
+                <h3>Caractéristiques</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showCharacteristics} 
+                  onChange={(e) => b.setShowCharacteristics(e.target.checked)} 
+                  style={{ width: 'auto' }}
+                />
+                <span>Afficher</span>
+              </label>
+            </div>
+            
+            {b.showCharacteristics && (
+              <div style={{ marginTop: 15 }}>
+                <DynRows kind="characteristics" rows={b.characteristics} onChange={b.setCharacteristics} />
+              </div>
+            )}
+          </div>
+
+          {/* 3 — Couleurs */}
+          <div className="app-card b-card">
+            <div className="b-sec-head"><span className="b-sec-num">3</span><h3>Couleurs</h3></div>
             <div className="field">
               <label>Duos prêts à l&apos;emploi</label>
               <div className="swatch-row">
@@ -217,27 +246,27 @@ function ClassiqueContent() {
             </div>
           </div>
 
-          {/* 3 — Statistiques */}
+          {/* 4 — Statistiques */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">3</span><h3>Statistiques</h3></div>
+            <div className="b-sec-head"><span className="b-sec-num">4</span><h3>Statistiques</h3></div>
             <DynRows kind="stats" rows={b.stats} onChange={b.setStats} />
           </div>
 
-          {/* 4 — Palmarès */}
+          {/* 5 — Palmarès */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">4</span><h3>Palmarès</h3></div>
+            <div className="b-sec-head"><span className="b-sec-num">5</span><h3>Palmarès</h3></div>
             <DynRows kind="palmares" rows={b.palmares} onChange={b.setPalmares} />
           </div>
 
-          {/* 5 — Parcours */}
+          {/* 6 — Parcours */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">5</span><h3>Parcours</h3></div>
+            <div className="b-sec-head"><span className="b-sec-num">6</span><h3>Parcours</h3></div>
             <DynRows kind="career" rows={b.career} onChange={b.setCareer} />
           </div>
 
-          {/* 6 — Réseaux */}
+          {/* 7 — Réseaux */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">6</span><h3>Réseaux</h3></div>
+            <div className="b-sec-head"><span className="b-sec-num">7</span><h3>Réseaux</h3></div>
             <div className="field">
               <label>Instagram (URL)</label>
               <input value={b.instagram} maxLength={LIMITS.url} onChange={(e) => b.setInstagram(e.target.value)} placeholder="https://instagram.com/…" />
