@@ -19,14 +19,6 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
-const CHAR_LABELS: Record<string, string> = {
-  nationalite: 'Nationalité',
-  dob: 'Né(e) le',
-  taille: 'Taille',
-  poids: 'Poids',
-  pied_fort: 'Pied / Main fort',
-  club_actuel: 'Club actuel',
-}
 
 function cropTf(x = 50, y = 50, z = 1.4) {
   const m = (z - 1) / 2 * 100
@@ -245,23 +237,22 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </div>
         </article>
 
-        {((cv.bio) || (cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0)) && (
+        {((cv.bio) || (cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
           <section className="p-block">
             <h2 className="p-block-title">
               {cv.showCharacteristics ? 'Caractéristiques' : 'À propos'}
             </h2>
-            {cv.bio && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && Object.values(cv.characteristics).some(v => v?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
-            {cv.showCharacteristics && cv.characteristics && Object.keys(cv.characteristics).length > 0 && (
+            {cv.bio && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
+            {cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && (
               <div className="p-characteristics reveal">
                 <table className="char-table" style={{ marginTop: cv.bio ? '0' : '12px' }}>
                   <tbody>
-                    {Object.entries(cv.characteristics).map(([k, v]) => {
-                      if (!v?.trim()) return null
-                      const label = CHAR_LABELS[k] || k
+                    {cv.characteristics.map((c, idx) => {
+                      if (!c.name?.trim() || !c.value?.trim()) return null
                       return (
-                        <tr key={k}>
-                          <td className="char-label">{label}</td>
-                          <td className="char-val">{v}</td>
+                        <tr key={idx}>
+                          <td className="char-label">{c.name}</td>
+                          <td className="char-val">{c.value}</td>
                         </tr>
                       )
                     })}

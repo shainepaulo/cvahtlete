@@ -194,9 +194,34 @@ function ClassiqueContent() {
             </div>
           </div>
 
-          {/* 2 — Couleurs */}
+          {/* 2 — Caractéristiques */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">2</span><h3>Couleurs</h3></div>
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">2</span>
+                <h3>Caractéristiques</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showCharacteristics} 
+                  onChange={(e) => b.setShowCharacteristics(e.target.checked)} 
+                  style={{ width: 'auto' }}
+                />
+                <span>Afficher</span>
+              </label>
+            </div>
+            
+            {b.showCharacteristics && (
+              <div style={{ marginTop: 15 }}>
+                <DynRows kind="characteristics" rows={b.characteristics} onChange={b.setCharacteristics} />
+              </div>
+            )}
+          </div>
+
+          {/* 3 — Couleurs */}
+          <div className="app-card b-card">
+            <div className="b-sec-head"><span className="b-sec-num">3</span><h3>Couleurs</h3></div>
             <div className="field">
               <label>Duos prêts à l&apos;emploi</label>
               <div className="swatch-row">
@@ -219,86 +244,6 @@ function ClassiqueContent() {
                 <input type="color" value={b.colorB} onChange={(e) => b.setColorB(e.target.value)} style={{ height: 46, padding: 4 }} />
               </div>
             </div>
-          </div>
-
-          {/* 3 — Caractéristiques */}
-          <div className="app-card b-card">
-            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="b-sec-num">3</span>
-                <h3>Caractéristiques</h3>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem' }}>
-                <input 
-                  type="checkbox" 
-                  checked={b.showCharacteristics} 
-                  onChange={(e) => b.setShowCharacteristics(e.target.checked)} 
-                  style={{ width: 'auto' }}
-                />
-                <span>Afficher</span>
-              </label>
-            </div>
-            
-            {b.showCharacteristics && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 15 }}>
-                <div className="row2">
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Nationalité</label>
-                    <input 
-                      value={b.characteristics.nationalite || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, nationalite: e.target.value })} 
-                      placeholder="Ex: France" 
-                    />
-                  </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Né(e) le / Date de naissance</label>
-                    <input 
-                      value={b.characteristics.dob || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, dob: e.target.value })} 
-                      placeholder="Ex: 18/01/2002" 
-                    />
-                  </div>
-                </div>
-                
-                <div className="row2">
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Taille</label>
-                    <input 
-                      value={b.characteristics.taille || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, taille: e.target.value })} 
-                      placeholder="Ex: 196 cm" 
-                    />
-                  </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Poids</label>
-                    <input 
-                      value={b.characteristics.poids || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, poids: e.target.value })} 
-                      placeholder="Ex: 93 kg" 
-                    />
-                  </div>
-                </div>
-
-                <div className="row2">
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Pied / Main fort</label>
-                    <input 
-                      value={b.characteristics.pied_fort || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, pied_fort: e.target.value })} 
-                      placeholder="Ex: Pied gauche / Droitier" 
-                    />
-                  </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Club actuel</label>
-                    <input 
-                      value={b.characteristics.club_actuel || ''} 
-                      onChange={(e) => b.setCharacteristics({ ...b.characteristics, club_actuel: e.target.value })} 
-                      placeholder="Ex: Paris Saint-Germain" 
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* 4 — Statistiques */}

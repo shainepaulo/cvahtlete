@@ -91,7 +91,7 @@ export interface NoaClassicData {
   experience: ProfessionalExperience[]
   languages: LanguageSkill[]
   references: Reference[]
-  characteristics?: Record<string, string>
+  characteristics?: Array<{ name: string; value: string }>
   showCharacteristics?: boolean
 }
 

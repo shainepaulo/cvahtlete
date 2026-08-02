@@ -5,14 +5,6 @@ import type { NoaProfile } from '@/types/noa'
 import { useReveal } from '@/components/noa/shared/useReveal'
 import { ClassicDossier } from '@/components/noa/classic/ClassicDossier'
 
-const CHAR_LABELS: Record<string, string> = {
-  nationalite: 'Nationalité',
-  dob: 'Né(e) le',
-  taille: 'Taille',
-  poids: 'Poids',
-  pied_fort: 'Pied / Main fort',
-  club_actuel: 'Club actuel',
-}
 
 interface Props {
   profile: NoaProfile
@@ -79,23 +71,22 @@ export function ClassicView({ profile, adminForceMask, isAdminViewer }: Props) {
           </div>
         </article>
 
-        {((identity.bio) || (classic.showCharacteristics && classic.characteristics && Object.keys(classic.characteristics).length > 0)) && (
+        {((identity.bio) || (classic.showCharacteristics && classic.characteristics && classic.characteristics.length > 0 && classic.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
           <section className="p-block">
             <h2 className="p-block-title">
               {classic.showCharacteristics ? 'Caractéristiques' : 'À propos'}
             </h2>
-            {identity.bio && <p className="p-bio reveal" style={{ marginBottom: classic.showCharacteristics && classic.characteristics && Object.values(classic.characteristics).some(v => v?.trim()) ? '20px' : '0' }}>{identity.bio}</p>}
-            {classic.showCharacteristics && classic.characteristics && Object.keys(classic.characteristics).length > 0 && (
+            {identity.bio && <p className="p-bio reveal" style={{ marginBottom: classic.showCharacteristics && classic.characteristics && classic.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{identity.bio}</p>}
+            {classic.showCharacteristics && classic.characteristics && classic.characteristics.length > 0 && (
               <div className="p-characteristics reveal">
                 <table className="char-table" style={{ marginTop: identity.bio ? '0' : '12px' }}>
                   <tbody>
-                    {Object.entries(classic.characteristics).map(([k, v]) => {
-                      if (!v?.trim()) return null
-                      const label = CHAR_LABELS[k] || k
+                    {classic.characteristics.map((c, idx) => {
+                      if (!c.name?.trim() || !c.value?.trim()) return null
                       return (
-                        <tr key={k}>
-                          <td className="char-label">{label}</td>
-                          <td className="char-val">{v}</td>
+                        <tr key={idx}>
+                          <td className="char-label">{c.name}</td>
+                          <td className="char-val">{c.value}</td>
                         </tr>
                       )
                     })}
