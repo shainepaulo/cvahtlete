@@ -76,7 +76,7 @@ export default function Navbar({ user }: { user: NavUser }) {
                   className="btn btn-primary"
                   onClick={() => setOpen(false)}
                 >
-                  {user.hasPlan ? 'Mon répertoire' : 'Choisir une offre'}
+                  {user.hasPlan ? 'Mon CV' : 'Choisir une offre'}
                 </Link>
               </>
             ) : (
