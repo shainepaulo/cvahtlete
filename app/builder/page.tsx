@@ -23,7 +23,6 @@ function BuilderHubContent() {
   useEffect(() => {
     getMyProfile().then((p) => {
       if (!p) { router.push('/login?next=/builder'); return }
-      if (p.plan === 'free' && !p.isOwner) { router.push('/tarifs'); return }
       setUser({ plan: p.plan, planName: PLAN_LABEL[p.plan] ?? p.plan, cinematic: !!p.cinematic, isOwner: !!p.isOwner })
     })
   }, [router])

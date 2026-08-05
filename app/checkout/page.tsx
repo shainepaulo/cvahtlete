@@ -1,14 +1,9 @@
 'use client'
 
 /**
- * /checkout — Tunnel de paiement Stripe (PAIEMENT UNIQUE, jamais d'abonnement).
+ * /checkout — Tunnel de paiement Stripe (PAIEMENT UNIQUE par saison, sans abonnement).
  *  · Session obligatoire : le middleware redirige les visiteurs vers /signup.
- *  · Starter (29 €) : débit immédiat sur la page hébergée Stripe.
- *  · Pro (79 €) : carte OBLIGATOIRE, 0 € débité aujourd'hui — autorisation
- *    3 jours, paiement unique capturé à J+3 sauf annulation depuis le dashboard.
- *  · Sur-mesure (149 €+) : hors Stripe → formulaire /offre-sur-mesure.
- * Les montants affichés ici sont purement informatifs : la source de vérité
- * est le catalogue serveur (utils/stripe.ts) + la page hébergée Stripe.
+ *  · Pass Saison Pro (29 € ou 49 €) : débit immédiat sur la page hébergée Stripe.
  */
 
 import { useEffect, useState, Suspense } from 'react'
@@ -20,50 +15,59 @@ interface PackView {
   name: string
   price: number
   perks: string[]
-  trial?: boolean
 }
 
 const PACKS: Record<string, PackView> = {
-  starter: {
-    name: 'Starter CV',
-    price: 29,
+  season: {
+    name: 'Pass Saison Pro',
+    price: 49,
     perks: [
-      'Répertoire complet, un lien à partager',
-      '3 modifications incluses',
-      'Mises à jour par contact équipe (formulaire / email)',
+      'Tout Starter, plus :',
+      'Vidéos highlights (jusqu’à 20, 60 s / 100 Mo max)',
+      'Personnalisation complète : couleurs, bannière, mise en page, police',
+      'QR code téléchargeable',
+      'Sans watermark',
+      'Valable toute la saison (jusqu’au 30 juin)',
     ],
   },
-  pro: {
-    name: 'Pro Athlète',
-    price: 79,
-    trial: true,
-    perks: [
-      'Tout le Starter, sans la limite',
-      'Mode cinématique immersif 🎬',
-      'Mises à jour illimitées pendant 1 an',
-      'Support prioritaire + onboarding vidéo',
-    ],
-  },
+}
+
+function isClientLaunchOfferActive(): boolean {
+  const endDateStr = process.env.NEXT_PUBLIC_LAUNCH_OFFER_END
+  if (!endDateStr) return false
+
+  let end: Date
+  if (endDateStr.includes('/')) {
+    const [day, month, year] = endDateStr.split('/')
+    end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+  } else {
+    end = new Date(endDateStr)
+  }
+
+  return new Date() <= end
 }
 
 function CheckoutContent() {
   const router = useRouter()
   const params = useSearchParams()
-  const packId = params.get('pack') || 'starter'
+  const packId = params.get('pack') || 'season'
 
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState('')
 
-  const pack = PACKS[packId]
-
   useEffect(() => {
+    // Redirections legacy
+    if (packId === 'pro' || packId === 'starter') {
+      router.replace('/checkout?pack=season')
+      return
+    }
     // L'offre sur-mesure ne passe pas par Stripe : tunnel dédié.
     if (packId === 'club' || packId === 'surmesure') {
       router.replace('/offre-sur-mesure')
       return
     }
-    // Défense en profondeur : le middleware protège déjà /checkout.
+    
     getMyProfile().then((p) => {
       if (!p) {
         router.replace('/signup?next=' + encodeURIComponent('/checkout?pack=' + packId))
@@ -72,6 +76,11 @@ function CheckoutContent() {
       setLoading(false)
     })
   }, [packId, router])
+
+  const isPromo = isClientLaunchOfferActive()
+  const pack = PACKS[packId]
+  const currentPrice = packId === 'season' && isPromo ? 29 : (pack?.price ?? 49)
+  const originalPrice = packId === 'season' && isPromo ? 49 : null
 
   async function pay() {
     setPaying(true)
@@ -88,7 +97,6 @@ function CheckoutContent() {
         setPaying(false)
         return
       }
-      // Redirection vers la page de paiement hébergée Stripe (carte requise).
       window.location.assign(j.url)
     } catch {
       setError('Paiement impossible pour le moment.')
@@ -119,7 +127,7 @@ function CheckoutContent() {
         <div className="app-head" style={{ textAlign: 'left' }}>
           <span className="tag">Paiement</span>
           <h1>{pack.name}</h1>
-          <p>Paiement unique, sans abonnement.</p>
+          <p>Un seul paiement par saison, aucun abonnement mensuel.</p>
         </div>
 
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 0 22px' }}>
@@ -130,30 +138,26 @@ function CheckoutContent() {
           ))}
         </ul>
 
-        {pack.trial && (
-          <div className="trial-note">
-            <strong>🛡️ Essai 3 jours, sans engagement.</strong>
-            <span>
-              Carte requise, <strong>0 € débité aujourd&apos;hui</strong>. Sans annulation de ta part,
-              le paiement unique de {pack.price} € est capturé au bout de 3 jours — puis tes
-              avantages restent actifs à vie. Annule avant : aucun débit, ton CV repasse hors ligne.
-            </span>
-          </div>
-        )}
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: 22 }}>
           <span style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.12em', fontSize: '.78rem' }}>
-            {pack.trial ? 'Aujourd’hui / à J+3' : 'Total'}
+            Total pour la saison
           </span>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '2rem' }}>
-            {pack.trial ? `0 € / ${pack.price} €` : `${pack.price} €`}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            {originalPrice && (
+              <span style={{ textDecoration: 'line-through', color: 'var(--muted-2)', fontSize: '1.1rem' }}>
+                {originalPrice} €
+              </span>
+            )}
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '2rem' }}>
+              {currentPrice} €
+            </span>
+          </div>
         </div>
 
         {error && <div className="alert err" style={{ marginBottom: 14 }}>{error}</div>}
 
         <button className="btn btn-primary btn-block btn-lg" onClick={pay} disabled={paying}>
-          {paying ? 'Redirection vers Stripe…' : pack.trial ? 'Démarrer mon essai 3 jours' : `Payer ${pack.price} €`}
+          {paying ? 'Redirection vers Stripe…' : `Payer ${currentPrice} €`}
         </button>
 
         <p className="app-alt" style={{ marginTop: 16 }}>

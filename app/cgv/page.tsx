@@ -21,11 +21,11 @@ export default function CgvPage() {
       </p>
 
       <h2>2. Services et offres</h2>
-      <p>Le Site propose la création d&apos;un CV / profil d&apos;athlète en ligne accessible via un lien. Les offres et leurs caractéristiques :</p>
+      <p>Le Site propose la création d&apos;un CV d&apos;athlète en ligne accessible via un lien. Les offres et leurs caractéristiques :</p>
       <ul>
-        <li><strong>Starter CV — 29 €</strong> : CV complet, lien à partager, <strong>3 modifications incluses</strong>, mises à jour par contact équipe.</li>
-        <li><strong>Pro Athlète — 79 €</strong> : mises à jour illimitées pendant 1 an, mode cinématique débloqué, support prioritaire.</li>
-        <li><strong>Sur-mesure — à partir de 149 €</strong> : sur devis, sur demande de contact.</li>
+        <li><strong>Starter — Gratuit</strong> : CV complet, photos illimitées, thème par défaut, modifications illimitées, watermark visible.</li>
+        <li><strong>Pro Athlète — 49 € (ou 29 € en offre de lancement)</strong> : tout Starter, plus vidéos highlights, personnalisation complète, QR code téléchargeable, sans watermark, valable pour toute la saison (jusqu&apos;au 30 juin).</li>
+        <li><strong>Sur-mesure — à partir de 249 €</strong> : tout Pro Athlète (Pass Saison inclus), plus shooting photo de match par un photographe du réseau, CV monté sur mesure avec direction artistique, accompagnement personnalisé durant la saison.</li>
       </ul>
 
       <h2>3. Prix</h2>
@@ -41,11 +41,10 @@ export default function CgvPage() {
         par les moyens proposés sur le Site. La commande n&apos;est définitive qu&apos;après confirmation du paiement.
       </p>
 
-      <h2>5. Modifications incluses</h2>
+      <h2>5. Modifications et disponibilité</h2>
       <p>
-        L&apos;offre Starter inclut trois (3) modifications du CV après sa création. Au-delà, des modifications
-        supplémentaires pourront être proposées selon les conditions communiquées par le Vendeur. L&apos;offre Pro
-        inclut des mises à jour illimitées pendant douze (12) mois.
+        Les modifications du CV sont illimitées pour l&apos;ensemble des offres (Starter, Pro Athlète, Sur-mesure) 
+        et s&apos;effectuent de manière autonome en ligne (self-service) par le Client via l&apos;éditeur dédié.
       </p>
 
       <h2>6. Droit de rétractation</h2>

@@ -36,6 +36,8 @@ export interface CvData {
   links?: unknown[];
   visibility?: string;
   blocked?: boolean;
+  hasPro?: boolean;
+  plan?: string;
   characteristics?: Array<{ name: string; value: string }>;
   showCharacteristics?: boolean;
 }
@@ -163,15 +165,16 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   const links = normalizePublicLinks(input.links);
 
   // Snapshot cinematic depuis le plan courant (lecture RLS = self uniquement).
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_owner, plan")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, { data: sub }] = await Promise.all([
+    supabase.from("profiles").select("is_owner, plan").eq("id", user.id).single(),
+    supabase.from("subscriptions").select("season_expires_at").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
   const cinematic_enabled = !!(
     profile?.is_owner ||
-    profile?.plan === "pro" ||
-    profile?.plan === "club"
+    profile?.plan === "club" ||
+    profile?.plan === "pro" || // legacy
+    (profile?.plan === "season" && !isSeasonExpired)
   );
 
   // CV existant ?
@@ -251,20 +254,33 @@ export async function getMyCv(): Promise<CvData | null> {
   if (!data) return null;
   const cv = rowToCv(data as Record<string, unknown>);
 
-  // Vérification de l'expiration dynamique
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("status, trial_ends_at, plan")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Vérification de l'expiration dynamique et attribution du statut Pro
+  const [{ data: sub }, { data: profile }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("status, trial_ends_at, plan, season_expires_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("is_owner, plan")
+      .eq("id", user.id)
+      .maybeSingle()
+  ]);
 
-  const isExpired = sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date();
-  const isCanceled = sub?.status === 'canceled' || sub?.status === 'past_due' || sub?.status === 'free';
-  const hasPaid = sub?.status === 'active' || sub?.plan === 'club';
+  const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
+  const hasPaid = !!(
+    profile?.is_owner ||
+    profile?.plan === 'club' ||
+    (profile?.plan === 'season' && !isSeasonExpired) ||
+    sub?.plan === 'club' ||
+    (sub?.plan === 'season' && !isSeasonExpired) ||
+    sub?.status === 'active'
+  );
 
-  if ((isExpired || isCanceled) && !hasPaid) {
-    cv.blocked = true;
-  }
+  cv.hasPro = hasPaid;
+  cv.plan = profile?.plan ?? 'free';
+  cv.blocked = false; // Plus de blocage automatique des CV gratuits
   return cv;
 }
 
@@ -290,19 +306,24 @@ export async function getCvBySlug(slug: string): Promise<CvData | null> {
 
   const admin = createAdminClient();
   const [{ data: sub }, { data: ownerProfile }] = await Promise.all([
-    admin.from("subscriptions").select("status, trial_ends_at, plan").eq("user_id", cvRow.user_id).maybeSingle(),
-    admin.from("profiles").select("is_owner, is_super_admin").eq("id", cvRow.user_id).maybeSingle(),
+    admin.from("subscriptions").select("status, trial_ends_at, plan, season_expires_at").eq("user_id", cvRow.user_id).maybeSingle(),
+    admin.from("profiles").select("is_owner, is_super_admin, plan").eq("id", cvRow.user_id).maybeSingle(),
   ]);
 
   const isOwner = !!(ownerProfile?.is_owner || ownerProfile?.is_super_admin);
-  const isExpired = sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date();
-  const isCanceled = sub?.status === 'canceled' || sub?.status === 'past_due' || sub?.status === 'free';
-  const hasPaid = sub?.status === 'active' || sub?.plan === 'club';
+  const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
+  const hasPaid = !!(
+    isOwner ||
+    ownerProfile?.plan === 'club' ||
+    (ownerProfile?.plan === 'season' && !isSeasonExpired) ||
+    sub?.plan === 'club' ||
+    (sub?.plan === 'season' && !isSeasonExpired) ||
+    sub?.status === 'active'
+  );
 
-  if (!isOwner && (isExpired || isCanceled) && !hasPaid) {
-    cv.blocked = true;
-  }
-
+  cv.hasPro = hasPaid;
+  cv.plan = ownerProfile?.plan ?? 'free';
+  cv.blocked = false; // Plus de blocage automatique des CV gratuits
   return cv;
 }
 

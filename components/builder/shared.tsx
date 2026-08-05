@@ -18,7 +18,7 @@ import { getMyCv, upsertCv } from '@/app/actions/cv'
 import { uploadImage } from '@/app/actions/upload'
 
 export const PLAN_LABEL: Record<string, string> = {
-  free: 'Aucune offre', starter: 'Starter', pro: 'Pro', club: 'Club',
+  free: 'Gratuit', starter: 'Starter (Legacy)', pro: 'Pro (Legacy)', season: 'Pass Saison Pro', club: 'Club',
 }
 
 export const SPORTS: Record<string, { emoji: string; a: string; b: string }> = {
@@ -52,6 +52,7 @@ export interface Row { [k: string]: string }
 export interface BuilderUser {
   plan?: string | null
   planName?: string
+  isOwner?: boolean
   modificationsLeft?: number
   entitlements?: { cinematic?: boolean }
   cv?: { slug?: string } | null
@@ -247,10 +248,10 @@ export function useCvBuilder(nextPath: string) {
   useEffect(() => {
     getMyProfile().then((p) => {
       if (!p) { router.push(`/login?next=${encodeURIComponent(nextPath)}`); return }
-      if (p.plan === 'free' && !p.isOwner) { router.push('/tarifs'); return }
       setUser({
-        plan: p.plan, planName: PLAN_LABEL[p.plan],
-        modificationsLeft: p.isOwner ? -1 : 0,
+        plan: p.plan, planName: PLAN_LABEL[p.plan] ?? p.plan,
+        isOwner: p.isOwner,
+        modificationsLeft: -1,
         entitlements: { cinematic: p.cinematic },
         cv: null,
       })

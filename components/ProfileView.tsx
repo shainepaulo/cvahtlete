@@ -140,6 +140,10 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
     )
   }
 
+  const ownerHasPro = cv.hasPro ?? hasPro ?? false
+  const colorA = ownerHasPro ? (cv.colors?.a ?? '#8bb6ff') : '#8bb6ff'
+  const colorB = ownerHasPro ? (cv.colors?.b ?? '#79e0cf') : '#79e0cf'
+
   const cx = cv.photoPosX ?? 50
   const cy = cv.photoPosY ?? 50
   const cz = cv.cropZoomAvatar ?? 1.4
@@ -188,7 +192,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
       <div
         id="profileRoot"
         className="profile-wrap"
-        style={{ '--a': cv.colors?.a ?? '#8bb6ff', '--b': cv.colors?.b ?? '#79e0cf' } as React.CSSProperties}
+        style={{ '--a': colorA, '--b': colorB } as React.CSSProperties}
         ref={revealRef}
       >
         <article className="p-hero reveal">
@@ -311,6 +315,19 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
         )}
 
         {ctaSection()}
+
+        {!ownerHasPro && (
+          <div className="watermark" style={{
+            textAlign: 'center',
+            padding: '24px 0 10px',
+            fontSize: '0.85rem',
+            color: 'var(--muted-2, #888)',
+            opacity: 0.8,
+            borderTop: '1px solid var(--border)'
+          }}>
+            Créé avec <a href="https://cvathlete.com" target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: 'var(--a, #8bb6ff)', textDecoration: 'underline' }}>CVathlete</a>
+          </div>
+        )}
       </div>
 
       <div id="toast" className={`toast${toastVisible ? ' show' : ''}`}>

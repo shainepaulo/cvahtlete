@@ -137,13 +137,16 @@ export function paymentConfirmationHtml(params: {
   )
 }
 
-/** Notification interne : nouveau lead sur l'offre Sur-mesure (149 €+). */
+/** Notification interne : nouveau lead sur l'offre Sur-mesure (249 €+). */
 export function leadNotificationHtml(params: {
-  name: string
+  nom: string
   email: string
-  positions: string
-  goals: string
-  links: string
+  telephone: string
+  sport: string
+  club: string
+  ville: string
+  niveau: string
+  besoin: string
 }): string {
   const row = (label: string, value: string) => `
     <tr>
@@ -151,17 +154,20 @@ export function leadNotificationHtml(params: {
       <td style="padding:8px 10px;font-size:14px;color:#3a4356;line-height:1.5;word-break:break-word;">${esc(value) || '—'}</td>
     </tr>`
   return shell(
-    '🔥 Nouveau lead — Offre Sur-mesure (149 €+)',
+    '🔥 Nouveau lead — Offre Sur-mesure (249 €+)',
     `
       <p style="margin:0 0 16px;font-size:14px;color:#3a4356;">
         Un prospect vient de remplir le formulaire sur-mesure. À recontacter rapidement :
       </p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e3e8f2;border-radius:8px;overflow:hidden;">
-        ${row('Nom', params.name)}
+        ${row('Nom', params.nom)}
         ${row('E-mail', params.email)}
-        ${row('Poste(s)', params.positions)}
-        ${row('Objectifs', params.goals)}
-        ${row('Liens vidéos / stats', params.links)}
+        ${row('Téléphone', params.telephone)}
+        ${row('Sport', params.sport)}
+        ${row('Club', params.club)}
+        ${row('Ville', params.ville)}
+        ${row('Niveau', params.niveau)}
+        ${row('Besoin', params.besoin)}
       </table>
     `,
   )

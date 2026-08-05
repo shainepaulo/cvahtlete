@@ -1,23 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { getStripe, PAID_PLANS, isPaidPlanId } from '@/utils/stripe'
+import { getStripe, PAID_PLANS, isPaidPlanId, isLaunchOfferActive } from '@/utils/stripe'
 import { siteOriginFromConfig } from '@/utils/site-origin'
 
 export const runtime = 'nodejs'
 
 /**
  * POST /api/checkout — crée une Stripe Checkout Session (PAIEMENT UNIQUE).
- *
- * Sécurité :
- *  · Session Supabase obligatoire (cookies httpOnly) — le middleware bloque
- *    déjà /checkout, cette route re-vérifie côté serveur.
- *  · Le client n'envoie qu'un identifiant de plan : les montants viennent du
- *    catalogue serveur (PAID_PLANS). Aucune donnée carte ne touche ce serveur —
- *    la saisie se fait sur la page hébergée Stripe.
- *  · Pro : capture_method 'manual' => la carte est autorisée, 0 € débité à J0 ;
- *    la capture du paiement unique a lieu à J+3 (cron) sauf annulation.
- *    Les entitlements ne sont JAMAIS accordés ici : uniquement par le webhook signé.
  */
 export async function POST(request: NextRequest) {
   const supabase = createClient()
@@ -42,15 +32,17 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Un seul paiement actif par compte : on refuse si le plan est déjà payé/en essai.
+  // Un seul paiement actif par compte : on refuse si le plan est déjà payé pour cette saison.
   const { data: sub } = await admin
     .from('subscriptions')
-    .select('status, plan, stripe_customer_id')
+    .select('status, plan, stripe_customer_id, season_expires_at')
     .eq('user_id', user.id)
     .maybeSingle()
-  if (sub && (sub.status === 'active' || sub.status === 'trialing') && sub.plan !== 'free') {
+  
+  const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date())
+  if (sub && sub.status === 'active' && sub.plan === 'season' && !isSeasonExpired) {
     return NextResponse.json(
-      { error: 'Tu as déjà une offre active sur ce compte.' },
+      { error: 'Tu as déjà une offre active sur ce compte pour cette saison.' },
       { status: 409 },
     )
   }
@@ -73,6 +65,8 @@ export async function POST(request: NextRequest) {
 
   const origin = siteOriginFromConfig()
 
+  const hasCoupon = isLaunchOfferActive() && !!process.env.STRIPE_LAUNCH_COUPON_ID
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', // PAIEMENT UNIQUE — jamais mode 'subscription'
     customer: customerId,
@@ -84,11 +78,14 @@ export async function POST(request: NextRequest) {
           unit_amount: plan.amountCents,
           product_data: {
             name: plan.label,
-            description: 'Paiement unique — aucun abonnement.',
+            description: 'Paiement unique pour toute la saison — aucun abonnement.',
           },
         },
       },
     ],
+    discounts: hasCoupon
+      ? [{ coupon: process.env.STRIPE_LAUNCH_COUPON_ID! }]
+      : undefined,
     payment_intent_data: {
       capture_method: 'automatic',
       metadata: { supabase_user_id: user.id, plan: plan.id },
@@ -104,3 +101,4 @@ export async function POST(request: NextRequest) {
   }
   return NextResponse.json({ url: session.url })
 }
+

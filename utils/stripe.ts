@@ -31,22 +31,33 @@ export function getStripe(): Stripe {
 
 export interface PaidPlan {
   /** Identifiant interne (colonne subscriptions.plan). */
-  id: 'starter' | 'pro'
+  id: 'season'
   label: string
   /** Montant en centimes d'euro — source de vérité SERVEUR, jamais le client. */
   amountCents: number
-  /** Jours d'essai avant capture du paiement unique (0 = capture immédiate). */
-  trialDays: number
 }
 
 /** Catalogue serveur : le client n'envoie qu'un identifiant, jamais un montant. */
 export const PAID_PLANS: Record<PaidPlan['id'], PaidPlan> = {
-  starter: { id: 'starter', label: 'Starter CV — paiement unique', amountCents: 2_900, trialDays: 0 },
-  pro:     { id: 'pro',     label: 'Pro Athlète — paiement unique (essai 3 jours)', amountCents: 7_900, trialDays: 3 },
+  season: { id: 'season', label: 'Pass Saison Pro', amountCents: 4900 },
 }
 
 export function isPaidPlanId(v: unknown): v is PaidPlan['id'] {
-  return v === 'starter' || v === 'pro'
+  return v === 'season'
 }
 
-export const TRIAL_DAYS_MS = 3 * 24 * 60 * 60 * 1000
+export function isLaunchOfferActive(): boolean {
+  const endDateStr = process.env.NEXT_PUBLIC_LAUNCH_OFFER_END
+  if (!endDateStr) return false
+
+  let end: Date
+  if (endDateStr.includes('/')) {
+    const [day, month, year] = endDateStr.split('/')
+    end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+  } else {
+    end = new Date(endDateStr)
+  }
+
+  return new Date() <= end
+}
+

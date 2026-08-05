@@ -3,36 +3,28 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Merci — ATHLETE CV',
-  description: 'Ton offre ATHLETE CV est en route.',
+  description: 'Ton offre Pass Saison Pro est active.',
 }
 
 /**
  * /checkout/merci — retour de la page de paiement hébergée Stripe.
- * Page purement informative : les entitlements sont accordés par le webhook
- * signé, jamais par cette page (aucune confiance dans les paramètres d'URL).
  */
-export default function CheckoutMerciPage({
-  searchParams,
-}: {
-  searchParams: { plan?: string }
-}) {
-  const isTrial = searchParams.plan === 'pro'
+export default function CheckoutMerciPage() {
   return (
     <div className="app-wrap">
       <div className="app-card" style={{ textAlign: 'center' }}>
         <div className="app-head">
           <span className="tag">C&apos;est parti 🎉</span>
-          <h1>{isTrial ? 'Ton essai Pro est lancé.' : 'Paiement confirmé.'}</h1>
-          <p>
-            {isTrial
-              ? "Carte validée, 0 € débité aujourd'hui. Tu as 3 jours pour tout tester — sans annulation, le paiement unique de 79 € sera capturé et tes avantages resteront actifs. Tu peux annuler à tout moment depuis ton dashboard."
-              : 'Ton paiement unique est validé — tu reçois un e-mail de confirmation. Ton répertoire est prêt à être construit.'}
+          <h1>Paiement confirmé !</h1>
+          <p style={{ marginTop: '12px', lineHeight: '1.6' }}>
+            Ton Pass Saison Pro est validé — tu recevras un e-mail de confirmation sous peu. 
+            Tes fonctionnalités Pro sont désormais actives pour toute la saison.
           </p>
         </div>
-        <Link href="/builder?welcome=1" className="btn btn-primary btn-block btn-lg">
+        <Link href="/builder?welcome=1" className="btn btn-primary btn-block btn-lg" style={{ marginTop: '10px' }}>
           Construire mon CV →
         </Link>
-        <p className="app-alt" style={{ marginTop: 14 }}>
+        <p className="app-alt" style={{ marginTop: 18 }}>
           <Link href="/dashboard">Aller à mon dashboard</Link>
         </p>
       </div>

@@ -154,7 +154,7 @@ export async function signOut(): Promise<void> {
 
 export interface MyProfile {
   fullName: string;
-  plan: "free" | "starter" | "pro" | "club";
+  plan: "free" | "starter" | "pro" | "club" | "season";
   isOwner: boolean;
   cinematic: boolean;
 }
@@ -175,7 +175,7 @@ export async function getMyProfile(): Promise<MyProfile | null> {
       .single(),
     supabase
       .from("subscriptions")
-      .select("status, trial_ends_at")
+      .select("status, trial_ends_at, season_expires_at")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -184,7 +184,8 @@ export async function getMyProfile(): Promise<MyProfile | null> {
 
   const isExpired = !!(
     (sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date()) ||
-    (sub?.status === 'canceled' && sub.trial_ends_at)
+    (sub?.status === 'canceled' && sub.trial_ends_at) ||
+    (sub?.season_expires_at && new Date(sub.season_expires_at) < new Date())
   );
 
   const plan = (isExpired ? "free" : (data?.plan ?? "free")) as MyProfile["plan"];
@@ -193,6 +194,6 @@ export async function getMyProfile(): Promise<MyProfile | null> {
     fullName: data?.full_name ?? "",
     plan,
     isOwner,
-    cinematic: isOwner || plan === "pro" || plan === "club",
+    cinematic: isOwner || plan === "pro" || plan === "season" || plan === "club",
   };
 }

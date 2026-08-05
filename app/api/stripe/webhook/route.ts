@@ -4,6 +4,7 @@ import { getStripe, PAID_PLANS, isPaidPlanId } from '@/utils/stripe'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { sendEmail, paymentConfirmationHtml } from '@/utils/email'
 import { siteOriginFromConfig } from '@/utils/site-origin'
+import { getSeasonExpirationDate } from '@/utils/season'
 
 export const runtime = 'nodejs'
 
@@ -110,15 +111,17 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true })
 }
 
+
 type AdminClient = ReturnType<typeof createAdminClient>
 
 async function activatePaidPlan(
   admin: AdminClient,
   userId: string,
-  planId: 'starter' | 'pro',
+  planId: string,
   paymentIntentId: string | null,
 ) {
-  const now = new Date().toISOString()
+  const now = new Date()
+  const seasonExpiresAt = getSeasonExpirationDate(now).toISOString()
   await admin
     .from('subscriptions')
     .update({
@@ -126,13 +129,14 @@ async function activatePaidPlan(
       plan: planId,
       stripe_payment_intent_id: paymentIntentId,
       trial_ends_at: null,
-      updated_at: now,
+      season_expires_at: seasonExpiresAt,
+      updated_at: now.toISOString(),
     })
     .eq('user_id', userId)
   await admin.from('profiles').update({ plan: planId }).eq('id', userId)
 }
 
-/** Retire les avantages et rend le CV instantanément indisponible en ligne. */
+/** Retire les avantages et rend le CV de base gratuit. */
 async function revokeTrial(admin: AdminClient, userId: string) {
   const now = new Date().toISOString()
   await admin
@@ -141,17 +145,17 @@ async function revokeTrial(admin: AdminClient, userId: string) {
       status: 'canceled',
       plan: 'free',
       trial_ends_at: null,
+      season_expires_at: null,
       updated_at: now,
     })
     .eq('user_id', userId)
   await admin.from('profiles').update({ plan: 'free' }).eq('id', userId)
-  await admin.from('cvs').update({ visibility: 'private' }).eq('user_id', userId)
 }
 
 async function sendDoneEmail(
   admin: AdminClient,
   userId: string,
-  planId: 'starter' | 'pro',
+  planId: string,
   amountCents: number,
 ) {
   const { data: profile } = await admin
@@ -160,14 +164,18 @@ async function sendDoneEmail(
     .eq('id', userId)
     .maybeSingle()
   if (!profile?.email) return
+  
+  const label = planId === 'season' ? 'Pass Saison Pro' : ((PAID_PLANS as Record<string, { label: string }>)[planId]?.label ?? planId)
+
   await sendEmail({
     to: [profile.email],
     subject: '✅ Paiement confirmé — ton ATHLETE CV est actif',
     html: paymentConfirmationHtml({
       fullName: profile.full_name ?? '',
-      planLabel: PAID_PLANS[planId].label,
+      planLabel: label,
       amountCents,
       cvUrl: `${siteOriginFromConfig()}/dashboard`,
     }),
   })
 }
+

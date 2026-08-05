@@ -15,6 +15,7 @@ import {
 
 function ClassiqueContent() {
   const b = useCvBuilder('/builder/classique')
+  const hasPro = !!(b.user?.plan === 'season' || b.user?.plan === 'pro' || b.user?.plan === 'club' || b.user?.isOwner)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const previewReady = useRef(false)
 
@@ -237,30 +238,50 @@ function ClassiqueContent() {
           </div>
 
           {/* 3 — Couleurs */}
-          <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">3</span><h3>Couleurs</h3></div>
-            <div className="field">
-              <label>Duos prêts à l&apos;emploi</label>
-              <div className="swatch-row">
-                {COLOR_PRESETS.map((p) => (
-                  <button key={p.name} type="button" title={p.name}
-                    className={`swatch${b.colorA === p.a && b.colorB === p.b ? ' on' : ''}`}
-                    style={{ background: `linear-gradient(120deg, ${p.a}, ${p.b})` }}
-                    onClick={() => { b.setColorA(p.a); b.setColorB(p.b) }}
-                  />
-                ))}
-              </div>
+          <div className="app-card b-card" style={{ position: 'relative' }}>
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="b-sec-num">3</span>
+              <h3>Couleurs</h3>
+              {!hasPro && (
+                <span className="hub-badge" style={{ background: 'var(--accent, #8bb6ff)', color: '#002451', fontSize: '0.68rem', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>PRO</span>
+              )}
             </div>
-            <div className="row2">
-              <div className="field">
-                <label>Couleur 1 (précise)</label>
-                <input type="color" value={b.colorA} onChange={(e) => b.setColorA(e.target.value)} style={{ height: 46, padding: 4 }} />
+            {hasPro ? (
+              <>
+                <div className="field">
+                  <label>Duos prêts à l&apos;emploi</label>
+                  <div className="swatch-row">
+                    {COLOR_PRESETS.map((p) => (
+                      <button key={p.name} type="button" title={p.name}
+                        className={`swatch${b.colorA === p.a && b.colorB === p.b ? ' on' : ''}`}
+                        style={{ background: `linear-gradient(120deg, ${p.a}, ${p.b})` }}
+                        onClick={() => { b.setColorA(p.a); b.setColorB(p.b) }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="row2">
+                  <div className="field">
+                    <label>Couleur 1 (précise)</label>
+                    <input type="color" value={b.colorA} onChange={(e) => b.setColorA(e.target.value)} style={{ height: 46, padding: 4 }} />
+                  </div>
+                  <div className="field">
+                    <label>Couleur 2 (précise)</label>
+                    <input type="color" value={b.colorB} onChange={(e) => b.setColorB(e.target.value)} style={{ height: 46, padding: 4 }} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '20px 10px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed var(--border)', borderRadius: '8px' }}>
+                <span style={{ fontSize: '1.5rem' }}>🔒</span>
+                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '8px 0 12px', lineHeight: '1.4' }}>
+                  La personnalisation des couleurs est réservée aux membres Pro. Ton CV utilisera le thème par défaut de CVathlete.
+                </p>
+                <Link href="/tarifs" className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '0.75rem', height: 'auto' }}>
+                  Débloquer les couleurs Pro
+                </Link>
               </div>
-              <div className="field">
-                <label>Couleur 2 (précise)</label>
-                <input type="color" value={b.colorB} onChange={(e) => b.setColorB(e.target.value)} style={{ height: 46, padding: 4 }} />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* 4 — Statistiques */}

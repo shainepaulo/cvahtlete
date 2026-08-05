@@ -5,9 +5,10 @@ import { signOut } from '@/app/actions/auth'
 import { TrialBanner } from '@/components/billing/TrialBanner'
 
 const PLAN_LABEL: Record<string, string> = {
-  free: 'Aucune offre',
-  starter: 'Starter',
-  pro: 'Pro',
+  free: 'Gratuit',
+  starter: 'Starter (Legacy)',
+  pro: 'Pro (Legacy)',
+  season: 'Pass Saison Pro',
   club: 'Club',
 }
 
@@ -15,28 +16,30 @@ export default async function DashboardPage() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) redirect('/login')
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  // Défense en profondeur (le middleware protège déjà /dashboard).
   if (!user) redirect('/login?next=/dashboard')
 
   const [{ data: profile }, { data: cv }, { data: sub }] = await Promise.all([
     supabase.from('profiles').select('full_name, email, is_owner, is_super_admin, plan, account_status').eq('id', user.id).single(),
     supabase.from('cvs').select('slug, visibility').eq('user_id', user.id).maybeSingle(),
-    supabase.from('subscriptions').select('status, trial_ends_at, plan').eq('user_id', user.id).maybeSingle(),
+    supabase.from('subscriptions').select('status, trial_ends_at, plan, season_expires_at').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (profile?.account_status && profile.account_status !== 'active') redirect('/login?error=inactive')
 
-  // Un essai est expiré s'il est dépassé dans le temps ou s'il a été annulé
+  const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date())
   const isExpired = !!(
     (sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date()) ||
-    (sub?.status === 'canceled' && sub.trial_ends_at)
+    (sub?.status === 'canceled' && sub.trial_ends_at) ||
+    isSeasonExpired
   )
   const plan = isExpired ? 'free' : (profile?.plan ?? 'free')
   const hasPlan = plan !== 'free'
   const isOwner = !!profile?.is_owner || !!profile?.is_super_admin
   const isSuperAdmin = !!profile?.is_super_admin
   const firstName = (profile?.full_name || '').split(' ')[0] || 'athlète'
-  const cinematic = isOwner || plan === 'pro' || plan === 'club'
+  
+  // Le mode cinématique est accessible aux membres actifs Pro/Season/Club ou propriétaires
+  const cinematic = isOwner || plan === 'pro' || plan === 'season' || plan === 'club'
 
   return (
     <div className="app-wrap wide">
@@ -53,38 +56,82 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {sub?.trial_ends_at && (sub?.status === 'trialing' || sub?.status === 'canceled') && (
+      {sub?.trial_ends_at && (sub?.status === 'trialing' || sub?.status === 'canceled') && !isSeasonExpired && (
         <TrialBanner trialEndsAt={sub.trial_ends_at} isExpired={isExpired} />
       )}
 
-      <div className="dash-grid">
-        <div className="dash-plan">
-          <span className={`pill${hasPlan || isOwner ? '' : ' none'}`}>
-            {isOwner ? 'Accès illimité' : PLAN_LABEL[plan]}
-          </span>
-          <h2>{isOwner ? 'Club · Godpower' : PLAN_LABEL[plan]}</h2>
-          {hasPlan || isOwner ? (
+      <div className="dash-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="dash-plan" style={{ margin: 0, height: 'auto' }}>
+            <span className={`pill${hasPlan || isOwner ? '' : ' none'}`}>
+              {isOwner ? 'Accès illimité' : PLAN_LABEL[plan]}
+            </span>
+            <h2>{isOwner ? 'Club · Godpower' : PLAN_LABEL[plan]}</h2>
+            
             <p style={{ color: 'var(--muted)', fontSize: '.9rem', marginTop: 12 }}>
-              Modifications : <strong>{isOwner ? 'illimitées' : 'selon ton offre'}</strong>
+              Modifications : <strong>illimitées</strong>
               {isOwner && ' · tous les privilèges débloqués'}
+              {isSeasonExpired && (
+                <span style={{ color: 'var(--red)', display: 'block', marginTop: '8px', fontWeight: 600 }}>
+                  ⚠️ Ton Pass Saison Pro a expiré. Renseigne un nouveau pass pour réactiver les fonctionnalités Pro.
+                </span>
+              )}
             </p>
-          ) : (
-            <>
-              <p style={{ color: 'var(--muted)', margin: '14px 0 22px' }}>
-                Tu n&apos;as pas encore d&apos;offre. Choisis un pack pour débloquer ton répertoire.
-              </p>
-              <Link href="/tarifs" className="btn btn-primary">Voir les offres</Link>
-            </>
+            
+            {!hasPlan && !isOwner && (
+              <div style={{ marginTop: '16px' }}>
+                <Link href="/tarifs" className="btn btn-primary">Passer au Pass Pro</Link>
+              </div>
+            )}
+          </div>
+
+          {/* Section QR Code */}
+          {cv?.slug && (
+            <div className="app-card" style={{ padding: '24px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '20px', background: 'rgba(255, 255, 255, 0.01)', borderRadius: '12px' }}>
+              {hasPlan || isOwner ? (
+                <>
+                  <div style={{ background: '#fff', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`https://cvathlete.com/${cv.slug}`)}`}
+                      alt="QR Code du CV"
+                      width={120}
+                      height={120}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text)' }}>Ton QR Code</h3>
+                    <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginBottom: '12px', lineHeight: '1.4' }}>Télécharge le QR code pour l&apos;ajouter sur tes réseaux, affiches ou cartes de visite.</p>
+                    <a 
+                      href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`https://cvathlete.com/${cv.slug}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost"
+                      style={{ padding: '6px 14px', fontSize: '0.8rem', height: 'auto', display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      📥 Télécharger le QR Code
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <div style={{ width: '100%', textAlign: 'center', padding: '14px 0' }}>
+                  <span style={{ fontSize: '2rem' }}>🔒</span>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginTop: '10px', marginBottom: '6px', color: 'var(--text)' }}>QR Code du CV</h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginBottom: '14px', lineHeight: '1.4' }}>Télécharge le QR code redirigeant vers ton CV en passant Pro.</p>
+                  <Link href="/tarifs" className="btn btn-ghost" style={{ padding: '6px 14px', fontSize: '0.8rem', height: 'auto' }}>Débloquer avec le Pass Pro</Link>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
         <div className="dash-aside">
-          <Link href={hasPlan || isOwner ? '/builder' : '/tarifs'} className={`dash-link${hasPlan || isOwner ? '' : ' lock'}`}>
+          <Link href="/builder" className="dash-link">
             <span>
-              <span className="t">{hasPlan || isOwner ? 'Mon répertoire' : 'Créer mon répertoire'}</span>
-              <span className="d">{hasPlan || isOwner ? 'Construis et mets à jour ta page' : "Disponible après l'achat d'une offre"}</span>
+              <span className="t">Mon CV</span>
+              <span className="d">Construis et mets à jour ta page en autonomie</span>
             </span>
-            <span className="arrow">{hasPlan || isOwner ? '→' : '🔒'}</span>
+            <span className="arrow">→</span>
           </Link>
 
           {cv?.slug && (
