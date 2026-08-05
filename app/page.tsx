@@ -62,8 +62,7 @@ export default function HomePage() {
             <span className="grad">te fait signer.</span>
           </h1>
           <p className="lead reveal" data-delay="2">
-            Les clubs, agents et sponsors ne lisent plus les PDF. Ils cliquent.
-            Stats, palmarès et moments forts sur une page d&apos;élite — un seul lien, toujours à jour.
+            Reprends le contrôle de ton image. Mets en valeur ton parcours et tes compétences sur une page web d&apos;élite unique pour te vendre toi-même auprès des clubs, agents et sponsors.
           </p>
           <div className="hero-actions reveal" data-delay="3">
             <Link href="/tarifs" className="btn btn-primary btn-lg">Créer mon profil</Link>
@@ -124,14 +123,13 @@ export default function HomePage() {
       {/* ===================== PROBLÈME → SOLUTION ===================== */}
       <section className="section center">
         <div className="container">
-          <span className="tag reveal">Une page. Tout toi.</span>
+          <span className="tag reveal">Reprends le contrôle</span>
           <h2 className="title reveal" data-delay="1">
-            Fini les PDF dépassés<br />et les DM brouillons.
+            Sois le maître de<br />ton image et de ton talent.
           </h2>
-          <p className="lead-2 reveal" data-delay="2">
-            Chaque saison, des talents passent sous les radars à cause d&apos;un dossier illisible.
-            Pas toi. ATHLETE CV transforme ton parcours en vitrine vivante : stats, palmarès,
-            vidéos et contact — réunis, actuels, impossibles à ignorer.
+          <p className="lead-2 reveal" data-delay="2" style={{ maxWidth: '680px', margin: '0 auto' }}>
+            Nous ne prétendons pas te trouver un club à ta place, mais nous te donnons les armes pour te vendre toi-même et valoriser tes compétences. 
+            Notre mission est de t&apos;accompagner dans la valorisation de ton image et de te rendre visible aux yeux de tous afin de maximiser tes chances d&apos;atteindre tes objectifs de carrière.
           </p>
         </div>
       </section>

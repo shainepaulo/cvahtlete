@@ -4,7 +4,7 @@ import Logo from './Logo'
 const PAGES = [
   { href: '/', label: 'Accueil' },
   { href: '/exemples', label: 'LE CV' },
-  { href: '/sports', label: 'Tous les sports' },
+  { href: '/bibliotheque', label: 'La bibliothèque' },
   { href: '/tarifs', label: 'Tarifs' },
 ]
 
