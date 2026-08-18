@@ -66,23 +66,27 @@ export async function submitHighTicketLead(formData: FormData): Promise<LeadStat
     return { error: "Erreur technique lors de l'enregistrement de votre demande." };
   }
 
-  // 2) Notification interne par e-mail
-  const notify = await sendEmail({
-    to: leadNotifyEmails(),
-    subject: `🔥 Lead Sur-mesure — ${nom}`,
-    html: leadNotificationHtml({ nom, email, telephone, sport, club, ville, niveau, besoin }),
-    replyTo: email,
-  });
-  if (!notify.ok) {
-    return { error: "Envoi impossible pour le moment. Réessaye ou écris-nous directement." };
+  // 2) Notification interne par e-mail (best-effort)
+  try {
+    const notify = await sendEmail({
+      to: leadNotifyEmails(),
+      subject: `🔥 Lead Sur-mesure — ${nom}`,
+      html: leadNotificationHtml({ nom, email, telephone, sport, club, ville, niveau, besoin }),
+      replyTo: email,
+    });
+    if (!notify.ok) {
+      console.warn("[leads] Notification e-mail non envoyée (service non configuré ou échec) :", notify.error);
+    } else {
+      // 3) Accusé de réception au prospect (best-effort)
+      await sendEmail({
+        to: [email],
+        subject: "Bien reçu — ATHLETE CV Sur-mesure",
+        html: leadAckHtml(nom),
+      });
+    }
+  } catch (emailErr) {
+    console.error("[leads] Erreur lors de l'envoi d'e-mail :", emailErr);
   }
-
-  // 3) Accusé de réception au prospect (best-effort)
-  await sendEmail({
-    to: [email],
-    subject: "Bien reçu — ATHLETE CV Sur-mesure",
-    html: leadAckHtml(nom),
-  });
 
   return { ok: "Demande envoyée ! Un membre de l'équipe te recontacte sous 48 h." };
 }

@@ -241,15 +241,15 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </div>
         </article>
 
-        {((cv.bio) || (cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
+        {((cv.bio && cv.showSections?.bio !== false) || (cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()))) && (
           <section className="p-block">
             <h2 className="p-block-title">
               {cv.showCharacteristics ? 'Caractéristiques' : 'À propos'}
             </h2>
-            {cv.bio && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
+            {cv.bio && cv.showSections?.bio !== false && <p className="p-bio reveal" style={{ marginBottom: cv.showCharacteristics && cv.characteristics && cv.characteristics.some((c) => c.name?.trim() && c.value?.trim()) ? '20px' : '0' }}>{cv.bio}</p>}
             {cv.showCharacteristics && cv.characteristics && cv.characteristics.length > 0 && (
               <div className="p-characteristics reveal">
-                <table className="char-table" style={{ marginTop: cv.bio ? '0' : '12px' }}>
+                <table className="char-table" style={{ marginTop: cv.bio && cv.showSections?.bio !== false ? '0' : '12px' }}>
                   <tbody>
                     {cv.characteristics.map((c, idx) => {
                       if (!c.name?.trim() || !c.value?.trim()) return null
@@ -267,7 +267,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </section>
         )}
 
-        {stats.length > 0 && (
+        {cv.showSections?.stats !== false && stats.length > 0 && (
           <section className="p-block">
             <h2 className="p-block-title">Statistiques clés</h2>
             <div className="p-stats">
@@ -284,7 +284,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </section>
         )}
 
-        {palmares.length > 0 && (
+        {cv.showSections?.palmares !== false && palmares.length > 0 && (
           <section className="p-block">
             <h2 className="p-block-title">Palmarès</h2>
             <div className="p-palmares">
@@ -299,7 +299,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
           </section>
         )}
 
-        {career.length > 0 && (
+        {cv.showSections?.career !== false && career.length > 0 && (
           <section className="p-block">
             <h2 className="p-block-title">Parcours</h2>
             <div className="p-timeline">

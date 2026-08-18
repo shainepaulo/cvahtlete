@@ -10,23 +10,23 @@ export default function MentionsLegalesPage() {
   return (
     <div className="legal">
       <h1>Mentions légales</h1>
-      <p className="upd">Dernière mise à jour : <span className="todo">[date à compléter]</span></p>
+      <p className="upd">Dernière mise à jour : 18 août 2026</p>
 
       <h2>Éditeur du site</h2>
       <ul>
-        <li>Nom / Raison sociale : <span className="todo">[à compléter]</span></li>
-        <li>Statut juridique : <span className="todo">[micro-entreprise / SAS / … à compléter]</span></li>
-        <li>Adresse : <span className="todo">[à compléter]</span></li>
-        <li>SIRET : <span className="todo">[à compléter]</span></li>
-        <li>E-mail : <span className="todo">[à compléter]</span></li>
-        <li>Téléphone : <span className="todo">[à compléter]</span></li>
+        <li>Nom / Raison sociale : TALAREF</li>
+        <li>Statut juridique : Société par Actions Simplifiée (SAS)</li>
+        <li>Adresse : Paris, France</li>
+        <li>SIRET : [SIRET à compléter]</li>
+        <li>E-mail : mpika.toshiro@talaref.co</li>
+        <li>Téléphone : [Téléphone à compléter]</li>
       </ul>
 
       <h2>Directeur de la publication</h2>
-      <p><span className="todo">[Nom Prénom à compléter]</span></p>
+      <p>MPIKA Toshiro</p>
 
       <h2>Hébergement</h2>
-      <p>Le site est hébergé par : <span className="todo">[Nom de l&apos;hébergeur, adresse, téléphone à compléter]</span>.</p>
+      <p>Le site est hébergé par : Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA.</p>
 
       <h2>Propriété intellectuelle</h2>
       <p>
@@ -41,7 +41,7 @@ export default function MentionsLegalesPage() {
         Les données collectées (nom, e-mail, mot de passe chiffré, données du CV) sont nécessaires à la fourniture
         du service. Elles ne sont ni vendues ni cédées à des tiers. Conformément au RGPD, vous disposez d&apos;un
         droit d&apos;accès, de rectification, de portabilité et de suppression de vos données. Pour exercer ces droits :{' '}
-        <span className="todo">[e-mail de contact à compléter]</span>.
+        mpika.toshiro@talaref.co.
       </p>
 
       <h2>Cookies</h2>
@@ -51,7 +51,7 @@ export default function MentionsLegalesPage() {
       </p>
 
       <h2>Contact</h2>
-      <p>Pour toute question : <span className="todo">[e-mail de contact à compléter]</span>.</p>
+      <p>Pour toute question : mpika.toshiro@talaref.co.</p>
 
       <p style={{ marginTop: 40 }}>
         <Link href="/" style={{ color: 'var(--accent)' }}>← Retour à l&apos;accueil</Link>

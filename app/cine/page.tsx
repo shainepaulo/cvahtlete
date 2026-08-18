@@ -106,7 +106,7 @@ function CineContent() {
         <div className="ci-locked">
           <h1>Lien invalide</h1>
           <p>{error}</p>
-          <Link className="btn btn-ghost" href="/exemples" style={{ marginTop: 18 }}>← Voir l&apos;exemple</Link>
+          <Link className="btn btn-ghost" href="/bibliotheque" style={{ marginTop: 18 }}>← Voir la bibliothèque</Link>
         </div>
       </div>
     )

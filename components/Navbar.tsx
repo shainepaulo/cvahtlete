@@ -9,7 +9,6 @@ export type NavUser = { email: string; isOwner: boolean; hasPlan: boolean } | nu
 
 const PAGES = [
   { href: '/', label: 'Accueil' },
-  { href: '/exemples', label: 'LE CV' },
   { href: '/bibliotheque', label: 'La bibliothèque' },
   { href: '/tarifs', label: 'Tarifs' },
 ]

@@ -66,7 +66,7 @@ export default function HomePage() {
           </p>
           <div className="hero-actions reveal" data-delay="3">
             <Link href="/tarifs" className="btn btn-primary btn-lg">Créer mon profil</Link>
-            <Link href="/exemples" className="btn btn-ghost btn-lg">Voir un exemple</Link>
+            <Link href="/bibliotheque" className="btn btn-ghost btn-lg">Voir la bibliothèque</Link>
           </div>
         </div>
         <div className="scroll-cue">
@@ -211,7 +211,7 @@ export default function HomePage() {
           </p>
           <div className="hero-actions" style={{ marginTop: 36 }}>
             <Link href="/tarifs" className="btn btn-primary btn-lg">Créer mon profil</Link>
-            <Link href="/exemples" className="btn btn-ghost btn-lg">Voir l&apos;exemple</Link>
+            <Link href="/bibliotheque" className="btn btn-ghost btn-lg">Voir la bibliothèque</Link>
           </div>
         </div>
       </section>

@@ -52,13 +52,17 @@ function CinematiqueContent() {
     <div className="app-wrap wide b-page">
       <div className="b-topbar">
         <div style={{ minWidth: 0 }}>
-          <Link href="/builder" className="b-back">← Espaces de création</Link>
+          <Link href={b.targetUserId ? "/admin" : "/builder"} className="b-back">
+            ← {b.targetUserId ? 'Retour console admin' : 'Espaces de création'}
+          </Link>
           <h1>🎬 CV Cinématique</h1>
           <p>{b.user.planName || ''} · L&apos;écran immersif de ton profil</p>
         </div>
         <div className="b-actions">
           {cvSlug && (
-            <Link className="btn btn-ghost" href={`/cine?u=${cvSlug}`} target="_blank">Voir en plein écran ↗</Link>
+            <Link className="btn btn-ghost" href={`/cine?u=${cvSlug}`} target="_blank">
+              {b.targetUserId ? 'Voir le CV ↗' : 'Voir en plein écran ↗'}
+            </Link>
           )}
           <button className="btn btn-primary" onClick={b.save} disabled={b.saving}>
             {b.saving ? 'Enregistrement…' : 'Enregistrer'}

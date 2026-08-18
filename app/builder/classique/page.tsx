@@ -13,11 +13,51 @@ import {
   SPORTS, COLOR_PRESETS, LIMITS,
 } from '@/components/builder/shared'
 
+const DISCIPLINES_BY_SPORT: Record<string, string[]> = {
+  Football: [
+    'Gardien de but',
+    'Défenseur central',
+    'Latéral gauche',
+    'Latéral droit',
+    'Milieu défensif',
+    'Milieu relayeur',
+    'Milieu offensif',
+    'Ailier gauche',
+    'Ailier droit',
+    'Avant-centre'
+  ],
+  Basket: [
+    'Meneur (1)',
+    'Arrière (2)',
+    'Ailier (3)',
+    'Ailier fort (4)',
+    'Pivot (5)'
+  ],
+  Handball: [
+    'Gardien de but',
+    'Ailier gauche',
+    'Arrière gauche',
+    'Demi-centre',
+    'Pivot',
+    'Arrière droit',
+    'Ailier droit'
+  ],
+  Escrime: [
+    'Fleuret',
+    'Épée',
+    'Sabre'
+  ]
+}
+
 function ClassiqueContent() {
   const b = useCvBuilder('/builder/classique')
   const hasPro = !!(b.user?.plan === 'season' || b.user?.plan === 'pro' || b.user?.plan === 'club' || b.user?.isOwner)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const previewReady = useRef(false)
+
+  const presetOptions = DISCIPLINES_BY_SPORT[b.sport]
+  const isPresetDiscipline = presetOptions && presetOptions.includes(b.discipline)
+  const disciplineSelectValue = isPresetDiscipline ? b.discipline : 'Autre'
 
   const [showImportModal, setShowImportModal] = useState(false)
   const [importUrl, setImportUrl] = useState('')
@@ -110,7 +150,9 @@ function ClassiqueContent() {
     <div className="app-wrap wide b-page">
       <div className="b-topbar">
         <div style={{ minWidth: 0 }}>
-          <Link href="/builder" className="b-back">← Espaces de création</Link>
+          <Link href={b.targetUserId ? "/admin" : "/builder"} className="b-back">
+            ← {b.targetUserId ? 'Retour console admin' : 'Espaces de création'}
+          </Link>
           <h1>📄 CV Classique</h1>
           <p>{b.user.planName || ''}</p>
         </div>
@@ -119,7 +161,9 @@ function ClassiqueContent() {
             <option value="private">🔒 Privé (lien seulement)</option>
             <option value="public">🌐 Public (visible en recherche)</option>
           </select>
-          <Link className="btn btn-ghost" href={cvSlug ? `/${cvSlug}` : '/profil?me=1'} target="_blank">Voir ma page ↗</Link>
+          <Link className="btn btn-ghost" href={cvSlug ? `/${cvSlug}` : (b.targetUserId ? '/admin' : '/profil?me=1')} target="_blank">
+            {b.targetUserId ? 'Voir le CV ↗' : 'Voir ma page ↗'}
+          </Link>
           <button className="btn btn-primary" onClick={b.save} disabled={b.saving}>
             {b.saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
@@ -183,10 +227,39 @@ function ClassiqueContent() {
                   />
                 )}
               </div>
-              <div className="field">
-                <label>Discipline / poste</label>
-                <input value={b.discipline} maxLength={LIMITS.discipline} onChange={(e) => b.setDiscipline(e.target.value)} placeholder="Ailier, Sprint…" />
-              </div>
+              {presetOptions ? (
+                <div className="field">
+                  <label>Discipline / poste</label>
+                  <select 
+                    value={disciplineSelectValue} 
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === 'Autre') {
+                        if (isPresetDiscipline) b.setDiscipline('')
+                      } else {
+                        b.setDiscipline(val)
+                      }
+                    }}
+                  >
+                    {presetOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    <option value="Autre">Autre (personnalisé)...</option>
+                  </select>
+                  {disciplineSelectValue === 'Autre' && (
+                    <input
+                      style={{ marginTop: 8 }}
+                      value={b.discipline}
+                      maxLength={LIMITS.discipline}
+                      onChange={(e) => b.setDiscipline(e.target.value)}
+                      placeholder="Saisis ton poste (ex: Ailier gauche)"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="field">
+                  <label>Discipline / poste</label>
+                  <input value={b.discipline} maxLength={LIMITS.discipline} onChange={(e) => b.setDiscipline(e.target.value)} placeholder="Ailier, Sprint…" />
+                </div>
+              )}
             </div>
             <div className="field">
               <label>Accroche</label>
@@ -194,9 +267,25 @@ function ClassiqueContent() {
               <CharCount value={b.tagline} max={LIMITS.tagline} />
             </div>
             <div className="field">
-              <label>Biographie</label>
-              <textarea value={b.bio} maxLength={LIMITS.bio} onChange={(e) => b.setBio(e.target.value)}
-                placeholder="Quelques lignes sur ton parcours, ta vision…" rows={4} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label>Biographie</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', cursor: 'pointer', fontWeight: 'normal', color: 'var(--muted-2)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={b.showSections.bio !== false} 
+                    onChange={(e) => b.setShowSections({ ...b.showSections, bio: e.target.checked })} 
+                  />
+                  Afficher la bio sur le profil
+                </label>
+              </div>
+              <textarea 
+                value={b.bio} 
+                maxLength={LIMITS.bio} 
+                onChange={(e) => b.setBio(e.target.value)}
+                placeholder="Quelques lignes sur ton parcours, ta vision…" 
+                rows={4} 
+                style={{ opacity: b.showSections.bio !== false ? 1 : 0.5 }}
+              />
               <CharCount value={b.bio} max={LIMITS.bio} />
             </div>
             <div className="row2">
@@ -286,20 +375,80 @@ function ClassiqueContent() {
 
           {/* 4 — Statistiques */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">4</span><h3>Statistiques</h3></div>
-            <DynRows kind="stats" rows={b.stats} onChange={b.setStats} />
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">4</span>
+                <h3>Statistiques</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--muted-2)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showSections.stats !== false} 
+                  onChange={(e) => b.setShowSections({ ...b.showSections, stats: e.target.checked })} 
+                />
+                Activer
+              </label>
+            </div>
+            <div style={{ opacity: b.showSections.stats !== false ? 1 : 0.4, pointerEvents: b.showSections.stats !== false ? 'auto' : 'none' }}>
+              <DynRows kind="stats" rows={b.stats} onChange={b.setStats} />
+            </div>
+            {b.showSections.stats === false && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: 8, margin: 0 }}>
+                ⚠️ Cette rubrique sera masquée sur ton profil.
+              </p>
+            )}
           </div>
 
           {/* 5 — Palmarès */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">5</span><h3>Palmarès</h3></div>
-            <DynRows kind="palmares" rows={b.palmares} onChange={b.setPalmares} />
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">5</span>
+                <h3>Palmarès</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--muted-2)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showSections.palmares !== false} 
+                  onChange={(e) => b.setShowSections({ ...b.showSections, palmares: e.target.checked })} 
+                />
+                Activer
+              </label>
+            </div>
+            <div style={{ opacity: b.showSections.palmares !== false ? 1 : 0.4, pointerEvents: b.showSections.palmares !== false ? 'auto' : 'none' }}>
+              <DynRows kind="palmares" rows={b.palmares} onChange={b.setPalmares} />
+            </div>
+            {b.showSections.palmares === false && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: 8, margin: 0 }}>
+                ⚠️ Cette rubrique sera masquée sur ton profil.
+              </p>
+            )}
           </div>
 
           {/* 6 — Parcours */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">6</span><h3>Parcours</h3></div>
-            <DynRows kind="career" rows={b.career} onChange={b.setCareer} />
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">6</span>
+                <h3>Parcours</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--muted-2)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showSections.career !== false} 
+                  onChange={(e) => b.setShowSections({ ...b.showSections, career: e.target.checked })} 
+                />
+                Activer
+              </label>
+            </div>
+            <div style={{ opacity: b.showSections.career !== false ? 1 : 0.4, pointerEvents: b.showSections.career !== false ? 'auto' : 'none' }}>
+              <DynRows kind="career" rows={b.career} onChange={b.setCareer} />
+            </div>
+            {b.showSections.career === false && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: 8, margin: 0 }}>
+                ⚠️ Cette rubrique sera masquée sur ton profil.
+              </p>
+            )}
           </div>
 
           {/* 7 — Réseaux */}

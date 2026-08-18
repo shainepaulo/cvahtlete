@@ -1,14 +1,13 @@
 import 'server-only'
+import nodemailer from 'nodemailer'
 
 /**
- * Envoi d'e-mails transactionnels via l'API HTTP Resend (aucun SDK requis).
- * SERVEUR UNIQUEMENT. Variables : RESEND_API_KEY, EMAIL_FROM.
+ * Envoi d'e-mails transactionnels via SMTP avec Nodemailer.
+ * SERVEUR UNIQUEMENT. Variables : SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM.
  *
  * Destinataires internes des leads sur-mesure : LEAD_NOTIFY_EMAILS
  * (liste séparée par des virgules).
  */
-
-const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
 export interface SendEmailInput {
   to: string[]
@@ -23,44 +22,47 @@ export interface SendEmailResult {
 }
 
 export async function sendEmail({ to, subject, html, replyTo }: SendEmailInput): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY
+  const host = process.env.SMTP_HOST
+  const port = Number(process.env.SMTP_PORT ?? 587)
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS
   const from = process.env.EMAIL_FROM
-  if (!apiKey || !from) {
+
+  if (!host || !user || !pass || !from) {
     // On n'échoue pas silencieusement : l'appelant décide quoi montrer.
-    console.error('[email] RESEND_API_KEY ou EMAIL_FROM manquant — e-mail non envoyé :', subject)
+    console.error('[email] Configuration SMTP manquante (SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM) — e-mail non envoyé :', subject)
     return { ok: false, error: 'Service e-mail non configuré.' }
   }
 
   try {
-    const res = await fetch(RESEND_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from,
-        to,
-        subject,
-        html,
-        ...(replyTo ? { reply_to: replyTo } : {}),
-      }),
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // true pour le port 465, false pour les autres (ex. 587)
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false
+      }
     })
-    if (!res.ok) {
-      const body = await res.text()
-      console.error('[email] Échec Resend', res.status, body.slice(0, 300))
-      return { ok: false, error: `Envoi refusé (${res.status}).` }
-    }
+
+    await transporter.sendMail({
+      from,
+      to: to.join(','),
+      subject,
+      html,
+      ...(replyTo ? { replyTo } : {}),
+    })
+
     return { ok: true }
   } catch (e) {
-    console.error('[email] Erreur réseau Resend', e)
+    console.error('[email] Erreur réseau SMTP via Nodemailer :', e)
     return { ok: false, error: 'Erreur réseau lors de l’envoi.' }
   }
 }
 
 /** Destinataires internes des notifications de leads (offre sur-mesure). */
 export function leadNotifyEmails(): string[] {
-  const raw = process.env.LEAD_NOTIFY_EMAILS ?? 'shaine.paulo@gmail.com,toshirompika@gmail.com'
+  const raw = process.env.LEAD_NOTIFY_EMAILS ?? 'shaine.paulo@gmail.com,mpika.toshiro@talaref.co'
   return raw.split(',').map((s) => s.trim()).filter(Boolean)
 }
 

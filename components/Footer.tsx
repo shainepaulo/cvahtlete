@@ -3,7 +3,6 @@ import Logo from './Logo'
 
 const PAGES = [
   { href: '/', label: 'Accueil' },
-  { href: '/exemples', label: 'LE CV' },
   { href: '/bibliotheque', label: 'La bibliothèque' },
   { href: '/tarifs', label: 'Tarifs' },
 ]

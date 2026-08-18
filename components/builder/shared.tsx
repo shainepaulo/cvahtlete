@@ -12,7 +12,7 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getMyProfile } from '@/app/actions/auth'
 import { getMyCv, upsertCv } from '@/app/actions/cv'
 import { uploadImage } from '@/app/actions/upload'
@@ -23,7 +23,9 @@ export const PLAN_LABEL: Record<string, string> = {
 
 export const SPORTS: Record<string, { emoji: string; a: string; b: string }> = {
   Football:     { emoji: '⚽', a: '#c6f932', b: '#5cf0c0' },
-  Basketball:   { emoji: '🏀', a: '#ff7a45', b: '#ffb347' },
+  Basket:       { emoji: '🏀', a: '#ff7a45', b: '#ffb347' },
+  Handball:     { emoji: '🤾', a: '#7c5cff', b: '#ff7a45' },
+  Escrime:      { emoji: '🤺', a: '#8bb6ff', b: '#ffd23f' },
   Tennis:       { emoji: '🎾', a: '#ff9f45', b: '#ffd23f' },
   Volley:       { emoji: '🏐', a: '#38d8ff', b: '#7c5cff' },
   'Athlétisme': { emoji: '⚡', a: '#ffd23f', b: '#34d399' },
@@ -207,6 +209,8 @@ export interface BuilderAlertState { msg: string; ok: boolean; link?: string; sl
  */
 export function useCvBuilder(nextPath: string) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const targetUserId = searchParams.get('u') || undefined
   const [user, setUser] = useState<BuilderUser | null>(null)
   const [saving, setSaving] = useState(false)
   const [alertMsg, setAlertMsg] = useState<BuilderAlertState | null>(null)
@@ -243,10 +247,16 @@ export function useCvBuilder(nextPath: string) {
     { name: 'Numéro', value: '' }
   ])
   const [showCharacteristics, setShowCharacteristics] = useState(false)
+  const [showSections, setShowSections] = useState<Record<string, boolean>>({
+    stats: true,
+    palmares: true,
+    career: true,
+    bio: true
+  })
 
   // Auth + pré-remplissage depuis la DB
   useEffect(() => {
-    getMyProfile().then((p) => {
+    getMyProfile(targetUserId).then((p) => {
       if (!p) { router.push(`/login?next=${encodeURIComponent(nextPath)}`); return }
       setUser({
         plan: p.plan, planName: PLAN_LABEL[p.plan] ?? p.plan,
@@ -256,18 +266,20 @@ export function useCvBuilder(nextPath: string) {
         cv: null,
       })
     })
-    getMyCv().then((cv) => {
+    getMyCv(targetUserId).then((cv) => {
       if (!cv) return
       setUser((u) => u ? { ...u, cv: { slug: cv.slug } } : u)
       setFirst(cv.first || '')
       setLast(cv.last || '')
-      setSport(cv.sport || 'Football')
+      let s = cv.sport || 'Football'
+      if (s === 'Basketball') s = 'Basket'
+      setSport(s)
       setDiscipline(cv.discipline || '')
       setBio(cv.bio || '')
       setTagline(cv.tagline || '')
       setLocation(cv.location || '')
-      setColorA(cv.colors?.a || SPORTS[cv.sport]?.a || '#c6f932')
-      setColorB(cv.colors?.b || SPORTS[cv.sport]?.b || '#5cf0c0')
+      setColorA(cv.colors?.a || SPORTS[s]?.a || '#c6f932')
+      setColorB(cv.colors?.b || SPORTS[s]?.b || '#5cf0c0')
       setAvatar(cv.avatar || '')
       setPhotoPosX(cv.photoPosX ?? 50)
       setPhotoPosY(cv.photoPosY ?? 50)
@@ -293,8 +305,16 @@ export function useCvBuilder(nextPath: string) {
         { name: 'Numéro', value: '' }
       ])
       setShowCharacteristics(!!cv.showCharacteristics)
+      if (cv.showSections) {
+        setShowSections({
+          stats: cv.showSections.stats !== false,
+          palmares: cv.showSections.palmares !== false,
+          career: cv.showSections.career !== false,
+          bio: cv.showSections.bio !== false
+        })
+      }
     })
-  }, [router, nextPath])
+  }, [router, nextPath, targetUserId])
 
   /** Payload complet du CV (aperçu postMessage ET enregistrement). */
   const buildPayload = useCallback(() => ({
@@ -317,10 +337,11 @@ export function useCvBuilder(nextPath: string) {
     visibility, slug: user?.cv?.slug,
     characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()),
     showCharacteristics,
+    showSections,
   }), [first, last, sport, discipline, tagline, bio, location, avatar,
        photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
        colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug,
-       characteristics, showCharacteristics])
+       characteristics, showCharacteristics, showSections])
 
   async function save() {
     if (!first || !last) {
@@ -344,6 +365,8 @@ export function useCvBuilder(nextPath: string) {
       visibility: visibility as 'private' | 'public',
       characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()) as Array<{ name: string; value: string }>,
       showCharacteristics,
+      targetUserId,
+      showSections,
     })
     setSaving(false)
     if (result.error) { setAlertMsg({ msg: result.error, ok: false }); return }
@@ -367,5 +390,6 @@ export function useCvBuilder(nextPath: string) {
     cropZoomCineBg, setCropZoomCineBg,
     stats, setStats, palmares, setPalmares, career, setCareer,
     characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
+    targetUserId, showSections, setShowSections,
   }
 }

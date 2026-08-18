@@ -170,6 +170,14 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
                   </div>
                 )}
               </span>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <a href={`/builder/classique?u=${row.id}`} className="mini-btn" style={{ background: 'rgba(56, 216, 255, 0.1)', color: '#38d8ff', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  ✏️ Modifier classique
+                </a>
+                <a href={`/builder/cinematique?u=${row.id}`} className="mini-btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: 'var(--gold)', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  🎬 Modifier cinématique
+                </a>
+              </div>
               {visMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{visMsg}</span>}
             </div>
           ) : (

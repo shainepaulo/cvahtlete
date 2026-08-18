@@ -159,7 +159,7 @@ export interface MyProfile {
   cinematic: boolean;
 }
 
-export async function getMyProfile(): Promise<MyProfile | null> {
+export async function getMyProfile(targetUserId?: string): Promise<MyProfile | null> {
   if (!hasSupabaseConfig()) return null;
   const supabase = createClient();
   const {
@@ -167,20 +167,38 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  let userIdToFetch = user.id;
+  let isActorAdmin = false;
+
+  const { data: actor } = await supabase
+    .from("profiles")
+    .select("is_owner, is_super_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (actor?.is_owner || actor?.is_super_admin) {
+    isActorAdmin = true;
+    if (targetUserId) {
+      userIdToFetch = targetUserId;
+    }
+  } else if (targetUserId && targetUserId !== user.id) {
+    return null;
+  }
+
   const [{ data }, { data: sub }] = await Promise.all([
     supabase
       .from("profiles")
       .select("full_name, plan, is_owner, account_status")
-      .eq("id", user.id)
+      .eq("id", userIdToFetch)
       .single(),
     supabase
       .from("subscriptions")
       .select("status, trial_ends_at, season_expires_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userIdToFetch)
       .maybeSingle(),
   ]);
 
-  if (data?.account_status && data.account_status !== "active") return null;
+  if (userIdToFetch === user.id && data?.account_status && data.account_status !== "active") return null;
 
   const isExpired = !!(
     (sub?.status === 'trialing' && sub.trial_ends_at && new Date(sub.trial_ends_at) < new Date()) ||
@@ -188,8 +206,8 @@ export async function getMyProfile(): Promise<MyProfile | null> {
     (sub?.season_expires_at && new Date(sub.season_expires_at) < new Date())
   );
 
-  const plan = (isExpired ? "free" : (data?.plan ?? "free")) as MyProfile["plan"];
-  const isOwner = !!data?.is_owner;
+  const plan = (isActorAdmin ? "club" : (isExpired ? "free" : (data?.plan ?? "free"))) as MyProfile["plan"];
+  const isOwner = isActorAdmin || !!data?.is_owner;
   return {
     fullName: data?.full_name ?? "",
     plan,

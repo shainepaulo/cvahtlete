@@ -42,7 +42,7 @@ export default function ConceptPage() {
           <h2 className="title">Tu paies une fois.<br />C&apos;est à toi.</h2>
           <p className="lead-2">Pas d&apos;abonnement, pas de mauvaise surprise. Ton répertoire t&apos;appartient et grandit avec toi.</p>
           <div className="hero-actions" style={{ marginTop: 34 }}>
-            <Link href="/exemples" className="btn btn-primary btn-lg">Voir des exemples</Link>
+            <Link href="/bibliotheque" className="btn btn-primary btn-lg">Voir la bibliothèque</Link>
             <Link href="/tarifs" className="btn btn-ghost btn-lg">Les offres</Link>
           </div>
         </div>

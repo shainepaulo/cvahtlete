@@ -40,11 +40,15 @@ export interface CvData {
   plan?: string;
   characteristics?: Array<{ name: string; value: string }>;
   showCharacteristics?: boolean;
+  showSections?: Record<string, boolean>;
 }
 
 const EMOJI: Record<string, string> = {
   Football: "⚽",
+  Basket: "🏀",
   Basketball: "🏀",
+  Handball: "🤾",
+  Escrime: "🤺",
   Tennis: "🎾",
   Volley: "🏐",
   "Athlétisme": "⚡",
@@ -82,6 +86,7 @@ function rowToCv(row: Record<string, unknown>): CvData {
     visibility: String(row.visibility ?? "private"),
     characteristics: (row.characteristics as Array<{ name: string; value: string }>) ?? [],
     showCharacteristics: !!row.show_characteristics,
+    showSections: (row.show_sections as Record<string, boolean>) || undefined,
   };
 }
 
@@ -123,6 +128,8 @@ export interface UpsertCvInput {
   visibility?: "private" | "public";
   characteristics?: Array<{ name: string; value: string }>;
   showCharacteristics?: boolean;
+  targetUserId?: string;
+  showSections?: Record<string, boolean>;
 }
 
 export interface UpsertCvResult {
@@ -148,6 +155,20 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Non connecté." };
 
+  let userIdToUpsert = user.id;
+  if (input.targetUserId && input.targetUserId !== user.id) {
+    const { data: actor } = await supabase
+      .from("profiles")
+      .select("is_owner, is_super_admin")
+      .eq("id", user.id)
+      .single();
+    if (actor?.is_owner || actor?.is_super_admin) {
+      userIdToUpsert = input.targetUserId;
+    } else {
+      return { error: "Accès refusé." };
+    }
+  }
+
   const first = input.first.trim().slice(0, 60);
   const last = input.last.trim().slice(0, 60);
   if (!first || !last) return { error: "Prénom et nom requis." };
@@ -166,8 +187,8 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
 
   // Snapshot cinematic depuis le plan courant (lecture RLS = self uniquement).
   const [{ data: profile }, { data: sub }] = await Promise.all([
-    supabase.from("profiles").select("is_owner, plan").eq("id", user.id).single(),
-    supabase.from("subscriptions").select("season_expires_at").eq("user_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("is_owner, plan").eq("id", userIdToUpsert).single(),
+    supabase.from("subscriptions").select("season_expires_at").eq("user_id", userIdToUpsert).maybeSingle(),
   ]);
   const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
   const cinematic_enabled = !!(
@@ -181,7 +202,7 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   const { data: existing } = await supabase
     .from("cvs")
     .select("id, slug")
-    .eq("user_id", user.id)
+    .eq("user_id", userIdToUpsert)
     .maybeSingle();
 
   let slug = (existing?.slug as string | undefined);
@@ -193,7 +214,7 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   }
 
   const row = {
-    user_id: user.id,
+    user_id: userIdToUpsert,
     slug,
     first,
     last,
@@ -219,6 +240,7 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     cinematic_enabled,
     characteristics: input.characteristics ?? [],
     show_characteristics: !!input.showCharacteristics,
+    show_sections: input.showSections ?? { stats: true, palmares: true, career: true, bio: true },
   };
 
   if (existing) {
@@ -244,13 +266,32 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
 
 // ─── Lecture : CV de l'utilisateur courant ───────────────────────────────────
 
-export async function getMyCv(): Promise<CvData | null> {
+export async function getMyCv(targetUserId?: string): Promise<CvData | null> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+
+  let userIdToFetch = user.id;
+  let isActorAdmin = false;
+
+  const { data: actor } = await supabase
+    .from("profiles")
+    .select("is_owner, is_super_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (actor?.is_owner || actor?.is_super_admin) {
+    isActorAdmin = true;
+    if (targetUserId) {
+      userIdToFetch = targetUserId;
+    }
+  } else if (targetUserId && targetUserId !== user.id) {
+    return null;
+  }
+
   const { data } = await supabase
-    .from("cvs").select("*").eq("user_id", user.id).maybeSingle();
+    .from("cvs").select("*").eq("user_id", userIdToFetch).maybeSingle();
   if (!data) return null;
   const cv = rowToCv(data as Record<string, unknown>);
 
@@ -259,17 +300,17 @@ export async function getMyCv(): Promise<CvData | null> {
     supabase
       .from("subscriptions")
       .select("status, trial_ends_at, plan, season_expires_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userIdToFetch)
       .maybeSingle(),
     supabase
       .from("profiles")
       .select("is_owner, plan")
-      .eq("id", user.id)
+      .eq("id", userIdToFetch)
       .maybeSingle()
   ]);
 
   const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
-  const hasPaid = !!(
+  const hasPaid = isActorAdmin || !!(
     profile?.is_owner ||
     profile?.plan === 'club' ||
     (profile?.plan === 'season' && !isSeasonExpired) ||
@@ -279,8 +320,9 @@ export async function getMyCv(): Promise<CvData | null> {
   );
 
   cv.hasPro = hasPaid;
-  cv.plan = profile?.plan ?? 'free';
+  cv.plan = isActorAdmin ? 'club' : (profile?.plan ?? 'free');
   cv.blocked = false; // Plus de blocage automatique des CV gratuits
+  cv.showSections = cv.showSections ?? { stats: true, palmares: true, career: true, bio: true };
   return cv;
 }
 

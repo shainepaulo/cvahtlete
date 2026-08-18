@@ -10,12 +10,12 @@ export default function CgvPage() {
   return (
     <div className="legal">
       <h1>Conditions Générales de Vente</h1>
-      <p className="upd">Dernière mise à jour : <span className="todo">[date à compléter]</span></p>
+      <p className="upd">Dernière mise à jour : 18 août 2026</p>
 
       <h2>1. Objet</h2>
       <p>
         Les présentes conditions générales de vente (« CGV ») régissent les ventes de services proposés par{' '}
-        <span className="todo">[Nom / Raison sociale à compléter]</span> (« le Vendeur ») via le site ATHLETE CV
+        l&apos;agence TALAREF (« le Vendeur ») via le site ATHLETE CV
         (« le Site ») à toute personne y effectuant un achat (« le Client »). Toute commande implique
         l&apos;acceptation pleine et entière des présentes CGV.
       </p>
@@ -32,7 +32,7 @@ export default function CgvPage() {
       <p>
         Les prix sont indiqués en euros. Le Vendeur se réserve le droit de modifier ses prix à tout moment ;
         les services sont facturés sur la base des tarifs en vigueur au moment de la validation de la commande.{' '}
-        <span className="todo">[Mention TVA à compléter selon le statut : « TVA non applicable, art. 293 B du CGI » ou taux applicable.]</span>
+        Les prix s&apos;entendent toutes taxes comprises (TVA applicable au taux légal en vigueur).
       </p>
 
       <h2>4. Commande et paiement</h2>
@@ -51,8 +51,7 @@ export default function CgvPage() {
       <p>
         Conformément à l&apos;article L221-28 du Code de la consommation, le Client reconnaît que la fourniture
         d&apos;un contenu numérique commence dès la validation de la commande et renonce expressément à son droit
-        de rétractation une fois l&apos;exécution du service commencée avec son accord.{' '}
-        <span className="todo">[À adapter / valider juridiquement.]</span>
+        de rétractation une fois l&apos;exécution du service commencée avec son accord. Aucun remboursement ne sera effectué après le début de l&apos;exécution du service.
       </p>
 
       <h2>7. Disponibilité du service</h2>
@@ -77,8 +76,8 @@ export default function CgvPage() {
       <h2>10. Droit applicable et litiges</h2>
       <p>
         Les présentes CGV sont soumises au droit français. En cas de litige, une solution amiable sera recherchée
-        avant toute action judiciaire. À défaut, les tribunaux compétents seront ceux du ressort du siège du Vendeur.{' '}
-        <span className="todo">[Médiateur de la consommation à mentionner si applicable.]</span>
+        avant toute action judiciaire. À défaut, les tribunaux compétents seront ceux du ressort du siège du Vendeur.
+        En cas de litige non résolu à l&apos;amiable, le Client peut saisir le médiateur de la consommation compétent.
       </p>
 
       <p style={{ marginTop: 40 }}>

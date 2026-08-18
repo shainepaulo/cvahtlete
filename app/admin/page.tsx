@@ -25,15 +25,26 @@ export default async function AdminPage({ searchParams }: Params) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?next=/admin')
 
-  // Profil de l'utilisateur connecté
+  // Profil de l'utilisateur connecté (sans charger admin_force_contact_mask pour tolérer l'absence de colonne)
   const { data: profile } = await supabase
     .from('profiles')
-    .select('email, is_owner, is_super_admin, account_status, admin_force_contact_mask')
+    .select('email, is_owner, is_super_admin, account_status')
     .eq('id', user.id)
     .single()
 
   if (profile?.account_status && profile.account_status !== 'active') redirect('/login?error=inactive')
   if (!profile?.is_owner && !profile?.is_super_admin) redirect('/dashboard')
+
+  // Récupération sécurisée du masquage de contact (optionnel)
+  let adminForceContactMask = true
+  const { data: maskData } = await supabase
+    .from('profiles')
+    .select('admin_force_contact_mask')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (maskData) {
+    adminForceContactMask = maskData.admin_force_contact_mask ?? true
+  }
 
   // Paramètres de filtrage et pagination
   const query = String(searchParams.q ?? '').trim()
@@ -165,7 +176,7 @@ export default async function AdminPage({ searchParams }: Params) {
         pageSize={pageSize}
       />
 
-      <AdminPrivacyToggle initialMasked={profile.admin_force_contact_mask ?? true} />
+      <AdminPrivacyToggle initialMasked={adminForceContactMask} />
 
       <div className="app-card" style={{ marginTop: 20 }}>
         <p style={{ color: 'var(--muted-2)', fontSize: '.82rem' }}>

@@ -103,7 +103,7 @@ function ProfilContent() {
         <div className="p-error">
           <h2 style={{ fontFamily: 'var(--font-display)' }}>{error}</h2>
           <p style={{ marginTop: 10 }}>Ce répertoire n&apos;existe pas encore.</p>
-          <Link className="btn btn-ghost" style={{ marginTop: 20 }} href="/exemples">← Voir les exemples</Link>
+          <Link className="btn btn-ghost" style={{ marginTop: 20 }} href="/bibliotheque">← Voir la bibliothèque</Link>
         </div>
       </div>
     )
