@@ -3,7 +3,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getCvBySlug } from '@/app/actions/cv'
 import { createClient } from '@/utils/supabase/server'
-import ProfileView from '@/components/ProfileView'
+import { getViewerContext } from '@/app/actions/viewer'
+import { AthleteCvCompletView } from '@/components/AthleteCvCompletView'
 import ClientCineView from '@/components/ClientCineView'
 
 interface Params {
@@ -31,20 +32,21 @@ export default async function SlugPage({ params, searchParams }: Params) {
   if (!cv) notFound()
 
   const mode = searchParams?.mode
+  const { adminForceMask, isAdminViewer } = await getViewerContext()
 
   // Déterminer si le visiteur connecté est propriétaire du CV (CTA adaptatif).
   let isOwn = false
-  let hasPro = false
   if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const [{ data: profile }, { data: mine }] = await Promise.all([
-        supabase.from('profiles').select('is_owner, plan').eq('id', user.id).single(),
-        supabase.from('cvs').select('slug').eq('user_id', user.id).eq('slug', params.slug).maybeSingle(),
-      ])
+      const { data: mine } = await supabase
+        .from('cvs')
+        .select('slug')
+        .eq('user_id', user.id)
+        .eq('slug', params.slug)
+        .maybeSingle()
       isOwn = !!mine
-      hasPro = !!(profile?.is_owner || profile?.plan === 'pro' || profile?.plan === 'club')
     }
   }
 
@@ -52,7 +54,15 @@ export default async function SlugPage({ params, searchParams }: Params) {
   if (cv.blocked) {
     if (isOwn) {
       // Le propriétaire peut voir sa page avec un bandeau/CTA d'activation
-      return <ProfileView cv={cv} isOwn={isOwn} hasPro={hasPro} />
+      return (
+        <AthleteCvCompletView
+          cv={cv}
+          backHref={cv.cinematic ? `/${cv.slug}` : '/'}
+          cvSlug={cv.slug}
+          adminForceMask={adminForceMask}
+          isAdminViewer={isAdminViewer}
+        />
+      )
     } else {
       // Les visiteurs externes voient une page d'explication premium
       return (
@@ -78,5 +88,13 @@ export default async function SlugPage({ params, searchParams }: Params) {
     return <ClientCineView cv={cv} />
   }
 
-  return <ProfileView cv={cv} isOwn={isOwn} hasPro={hasPro} />
+  return (
+    <AthleteCvCompletView
+      cv={cv}
+      backHref={cv.cinematic ? `/${cv.slug}` : '/'}
+      cvSlug={cv.slug}
+      adminForceMask={adminForceMask}
+      isAdminViewer={isAdminViewer}
+    />
+  )
 }
