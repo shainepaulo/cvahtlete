@@ -253,6 +253,11 @@ export function useCvBuilder(nextPath: string) {
     career: true,
     bio: true
   })
+  const [birthDate, setBirthDate] = useState('')
+  const [nationality, setNationality] = useState('')
+  const [eligibility, setEligibility] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
 
   // Auth + pré-remplissage depuis la DB
   useEffect(() => {
@@ -313,6 +318,11 @@ export function useCvBuilder(nextPath: string) {
           bio: cv.showSections.bio !== false
         })
       }
+      setBirthDate(cv.birthDate || '')
+      setNationality(cv.nationality || '')
+      setEligibility(cv.eligibility || '')
+      setContactPhone(cv.contactPhone || '')
+      setContactEmail(cv.contactEmail || '')
     })
   }, [router, nextPath, targetUserId])
 
@@ -338,10 +348,16 @@ export function useCvBuilder(nextPath: string) {
     characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()),
     showCharacteristics,
     showSections,
+    birthDate: birthDate || undefined,
+    nationality: nationality || undefined,
+    eligibility: eligibility || undefined,
+    contactPhone: contactPhone || undefined,
+    contactEmail: contactEmail || undefined,
   }), [first, last, sport, discipline, tagline, bio, location, avatar,
        photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
        colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug,
-       characteristics, showCharacteristics, showSections])
+       characteristics, showCharacteristics, showSections,
+       birthDate, nationality, eligibility, contactPhone, contactEmail])
 
   async function save() {
     if (!first || !last) {
@@ -367,6 +383,11 @@ export function useCvBuilder(nextPath: string) {
       showCharacteristics,
       targetUserId,
       showSections,
+      birthDate: birthDate || undefined,
+      nationality: nationality || undefined,
+      eligibility: eligibility || undefined,
+      contactPhone: contactPhone || undefined,
+      contactEmail: contactEmail || undefined,
     })
     setSaving(false)
     if (result.error) { setAlertMsg({ msg: result.error, ok: false }); return }
@@ -391,5 +412,7 @@ export function useCvBuilder(nextPath: string) {
     stats, setStats, palmares, setPalmares, career, setCareer,
     characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
     targetUserId, showSections, setShowSections,
+    birthDate, setBirthDate, nationality, setNationality, eligibility, setEligibility,
+    contactPhone, setContactPhone, contactEmail, setContactEmail,
   }
 }

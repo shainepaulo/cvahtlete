@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { CvData } from '@/app/actions/cv'
 import { normalizePublicLinks } from '@/utils/public-links'
+import { BlurValue } from '@/components/privacy/BlurValue'
 
 const ICONS: Record<string, React.ReactNode> = {
   x: (
@@ -310,6 +311,66 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
                   {c.detail && <div className="d">{c.detail}</div>}
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Section coordonnées — s'affiche si au moins 1 champ est renseigné */}
+        {(cv.birthDate || cv.nationality || cv.eligibility || cv.contactPhone || cv.contactEmail) && (
+          <section className="p-block">
+            <h2 className="p-block-title">Coordonnées</h2>
+            <div className="p-palmares">
+              {cv.birthDate && (
+                <div className="p-trophy reveal">
+                  <span className="ti">📅</span>
+                  <span className="tn">Date de naissance</span>
+                  <span className="tc">{cv.birthDate}</span>
+                </div>
+              )}
+              {cv.nationality && (
+                <div className="p-trophy reveal">
+                  <span className="ti">🌍</span>
+                  <span className="tn">Nationalité</span>
+                  <span className="tc">{cv.nationality}</span>
+                </div>
+              )}
+              {cv.eligibility && (
+                <div className="p-trophy reveal">
+                  <span className="ti">⭐</span>
+                  <span className="tn">Éligibilité</span>
+                  <span className="tc" style={{ fontSize: '0.85em' }}>{cv.eligibility}</span>
+                </div>
+              )}
+              {cv.contactPhone && (
+                <div className="p-trophy reveal">
+                  <span className="ti">📞</span>
+                  <span className="tn">Téléphone</span>
+                  <BlurValue
+                    className="tc"
+                    value={cv.contactPhone}
+                    href={`tel:${cv.contactPhone.replace(/[^+\d]/g, '')}`}
+                    sensitive
+                    forceVisible={!!isOwn}
+                    fieldLabel="Téléphone"
+                    cvSlug={cv.slug}
+                  />
+                </div>
+              )}
+              {cv.contactEmail && (
+                <div className="p-trophy reveal">
+                  <span className="ti">✉️</span>
+                  <span className="tn">Courriel</span>
+                  <BlurValue
+                    className="tc"
+                    value={cv.contactEmail}
+                    href={`mailto:${cv.contactEmail}`}
+                    sensitive
+                    forceVisible={!!isOwn}
+                    fieldLabel="Courriel"
+                    cvSlug={cv.slug}
+                  />
+                </div>
+              )}
             </div>
           </section>
         )}

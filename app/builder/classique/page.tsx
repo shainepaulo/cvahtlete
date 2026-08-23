@@ -463,6 +463,85 @@ function ClassiqueContent() {
               <input value={b.xUrl} maxLength={LIMITS.url} onChange={(e) => b.setXUrl(e.target.value)} placeholder="https://x.com/…" />
             </div>
           </div>
+
+          {/* 8 — Coordonnées */}
+          <div className="app-card b-card">
+            <div className="b-sec-head">
+              <span className="b-sec-num">8</span>
+              <h3>Coordonnées</h3>
+            </div>
+
+            {/* Infos publiques */}
+            <div className="row2">
+              <div className="field">
+                <label>Date de naissance</label>
+                <input
+                  value={b.birthDate}
+                  maxLength={20}
+                  onChange={(e) => b.setBirthDate(e.target.value)}
+                  placeholder="20/08/2007"
+                />
+              </div>
+              <div className="field">
+                <label>Nationalité</label>
+                <input
+                  value={b.nationality}
+                  maxLength={60}
+                  onChange={(e) => b.setNationality(e.target.value)}
+                  placeholder="Française"
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label>Éligibilité internationale</label>
+              <input
+                value={b.eligibility}
+                maxLength={100}
+                onChange={(e) => b.setEligibility(e.target.value)}
+                placeholder="Nouvelle-Calédonie (Franco-Calédonien)"
+              />
+            </div>
+
+            {/* Infos sensibles */}
+            <div
+              style={{
+                marginTop: 18,
+                padding: '12px 14px',
+                background: 'rgba(139,182,255,0.08)',
+                border: '1px solid rgba(139,182,255,0.25)',
+                borderRadius: 8,
+                marginBottom: 14,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-2)', lineHeight: 1.5 }}>
+                🔒 <strong>Téléphone &amp; email — données protégées</strong><br />
+                Ces coordonnées ne sont <strong>jamais affichées en clair</strong> aux visiteurs.
+                Les recruteurs doivent faire une demande d&apos;accès explicite. Seul toi (et l&apos;équipe CVathlete) peut les voir en clair.
+              </p>
+            </div>
+            <div className="row2">
+              <div className="field">
+                <label>Téléphone 🔒</label>
+                <input
+                  value={b.contactPhone}
+                  maxLength={30}
+                  onChange={(e) => b.setContactPhone(e.target.value)}
+                  placeholder="+33 7 00 00 00 00"
+                  type="tel"
+                />
+              </div>
+              <div className="field">
+                <label>Email 🔒</label>
+                <input
+                  value={b.contactEmail}
+                  maxLength={120}
+                  onChange={(e) => b.setContactEmail(e.target.value)}
+                  placeholder="ton@email.com"
+                  type="email"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Aperçu en direct */}

@@ -88,7 +88,7 @@ export default async function AdminPage({ searchParams }: Params) {
   if (userIds.length > 0) {
     const { data: cvRows } = await admin
       .from('cvs')
-      .select('id, slug, visibility, first, last, user_id')
+      .select('id, slug, visibility, first, last, user_id, cinematic_enabled')
       .in('user_id', userIds)
 
     if (cvRows) {
@@ -99,6 +99,7 @@ export default async function AdminPage({ searchParams }: Params) {
           visibility: String(row.visibility),
           first: String(row.first),
           last: String(row.last),
+          cinematic_enabled: !!row.cinematic_enabled,
         })
       })
     }

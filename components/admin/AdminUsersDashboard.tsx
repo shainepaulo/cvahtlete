@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useCallback } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { updateAccountStatus, setCvVisibility, updateUserPlan, extendTrial } from '@/app/actions/admin'
+import { updateAccountStatus, setCvVisibility, updateUserPlan, extendTrial, deleteUser, setCinematicEnabled } from '@/app/actions/admin'
 
 type AccountStatus = 'active' | 'suspended' | 'revoked'
 
@@ -17,7 +17,7 @@ export interface AdminUserRow {
   created_at: string
   trial_ends_at: string | null
   sub_status: string | null
-  cv: { id: string; slug: string; visibility: string; first: string; last: string } | null
+  cv: { id: string; slug: string; visibility: string; first: string; last: string; cinematic_enabled?: boolean } | null
 }
 
 interface AdminUsersDashboardProps {
@@ -84,11 +84,15 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
   const [planPending, startPlanTransition] = useTransition()
   const [trialPending, startTrialTransition] = useTransition()
   const [visPending, startVisTransition] = useTransition()
+  const [deletePending, startDeleteTransition] = useTransition()
+  const [cinePending, startCineTransition] = useTransition()
 
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [planMsg, setPlanMsg] = useState<string | null>(null)
   const [trialMsg, setTrialMsg] = useState<string | null>(null)
   const [visMsg, setVisMsg] = useState<string | null>(null)
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null)
+  const [cineMsg, setCineMsg] = useState<string | null>(null)
 
   const [selectedPlan, setSelectedPlan] = useState(row.plan)
   const [extendDays, setExtendDays] = useState(3)
@@ -146,6 +150,35 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
     })
   }
 
+  // Cinematic toggle handler
+  const handleCineToggle = (enabled: boolean) => {
+    setCineMsg(null)
+    startCineTransition(async () => {
+      const formData = new FormData()
+      formData.append('user_id', row.id)
+      formData.append('enabled', String(enabled))
+      const res = await setCinematicEnabled({}, formData)
+      if (res.error) setCineMsg(res.error)
+      else setCineMsg(res.ok ?? 'Mode cinématique mis à jour.')
+    })
+  }
+
+  // Delete account handler
+  const handleDelete = () => {
+    const confirmed = window.confirm(
+      `⚠️ SUPPRESSION IRRÉVERSIBLE\n\nSupprimer définitivement le compte de ${row.full_name || row.email} ?\n\nCette action est impossible à annuler.`
+    )
+    if (!confirmed) return
+    setDeleteMsg(null)
+    startDeleteTransition(async () => {
+      const formData = new FormData()
+      formData.append('user_id', row.id)
+      const res = await deleteUser({}, formData)
+      if (res.error) setDeleteMsg(res.error)
+      else setDeleteMsg(res.ok ?? 'Compte supprimé.')
+    })
+  }
+
   const isTrialActive = row.sub_status === 'trialing' && row.trial_ends_at && new Date(row.trial_ends_at) > new Date()
   const isTrialExpired = row.sub_status === 'trialing' && row.trial_ends_at && new Date(row.trial_ends_at) <= new Date()
 
@@ -178,6 +211,34 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
                   🎬 Modifier cinématique
                 </a>
               </div>
+              {/* Toggle cinématique */}
+              {canManage && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted-2)' }}>🎬 Cinématique :</span>
+                  <strong style={{ fontSize: '0.72rem', color: row.cv?.cinematic_enabled ? '#34d399' : 'var(--muted)' }}>
+                    {row.cv?.cinematic_enabled ? 'Activé' : 'Désactivé'}
+                  </strong>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                    <button
+                      onClick={() => handleCineToggle(true)}
+                      disabled={cinePending || !!row.cv?.cinematic_enabled}
+                      className="mini-btn"
+                      style={{ padding: '2px 6px', fontSize: '0.65rem', background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
+                    >
+                      {cinePending ? '…' : 'Activer'}
+                    </button>
+                    <button
+                      onClick={() => handleCineToggle(false)}
+                      disabled={cinePending || !row.cv?.cinematic_enabled}
+                      className="mini-btn danger"
+                      style={{ padding: '2px 6px', fontSize: '0.65rem' }}
+                    >
+                      {cinePending ? '…' : 'Désactiver'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {cineMsg && <span style={{ color: cineMsg.startsWith('Mode') ? '#34d399' : 'var(--red)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{cineMsg}</span>}
               {visMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{visMsg}</span>}
             </div>
           ) : (
@@ -283,6 +344,25 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
             </div>
           )}
           {statusMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.72rem' }}>{statusMsg}</span>}
+
+          {/* Suppression du compte */}
+          {canManage && (
+            <>
+              <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,50,50,0.15)' }}>
+                <button
+                  onClick={handleDelete}
+                  disabled={deletePending}
+                  className="mini-btn danger"
+                  style={{ fontSize: '0.65rem', width: '100%', padding: '4px 8px' }}
+                >
+                  {deletePending ? '⏳ Suppression…' : '🗑️ Supprimer le compte'}
+                </button>
+                {deleteMsg && (
+                  <span style={{ color: deleteMsg.startsWith('Le compte') ? '#34d399' : 'var(--red)', fontSize: '0.7rem', display: 'block', marginTop: 4 }}>{deleteMsg}</span>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </td>
     </>

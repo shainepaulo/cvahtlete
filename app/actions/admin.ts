@@ -279,3 +279,136 @@ export async function extendTrial(
   revalidatePath('/admin');
   return { ok: `L'essai a été prolongé de ${days} jours.` };
 }
+
+// ─── Suppression complète d'un compte utilisateur (Owner/Super Admin only) ────
+
+/**
+ * Supprime un compte utilisateur de manière irréversible :
+ * 1. CV lié (table cvs)
+ * 2. Profil (table profiles — via cascade ou explicitement)
+ * 3. Compte Auth Supabase (auth.users — via admin client)
+ * La protection empêche de se supprimer soi-même ou de supprimer un super_admin.
+ */
+export async function deleteUser(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+  if (!targetUserId) return { error: "ID utilisateur requis." };
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non connecté." };
+
+  if (user.id === targetUserId) {
+    return { error: "Tu ne peux pas supprimer ton propre compte depuis cette console." };
+  }
+
+  const { data: actor } = await supabase
+    .from('profiles')
+    .select('is_owner, is_super_admin, account_status')
+    .eq('id', user.id)
+    .single();
+
+  if (!actor?.is_owner && !actor?.is_super_admin) return { error: "Accès refusé." };
+  if (actor.account_status && actor.account_status !== 'active') return { error: "Compte inactif." };
+
+  const admin = createAdminClient();
+
+  // Vérification de la cible — interdit de supprimer un super_admin
+  const { data: targetProfile } = await admin
+    .from('profiles')
+    .select('id, email, is_super_admin, is_owner')
+    .eq('id', targetUserId)
+    .maybeSingle();
+
+  if (!targetProfile) return { error: "Compte introuvable." };
+  if (targetProfile.is_super_admin) {
+    return { error: "Impossible de supprimer un super admin." };
+  }
+  if (targetProfile.is_owner && !actor.is_super_admin) {
+    return { error: "Seul le super admin peut supprimer un owner." };
+  }
+
+  // 1. Suppression du CV lié
+  await admin.from('cvs').delete().eq('user_id', targetUserId);
+
+  // 2. Suppression de l'abonnement lié
+  await admin.from('subscriptions').delete().eq('user_id', targetUserId);
+
+  // 3. Suppression du profil
+  await admin.from('profiles').delete().eq('id', targetUserId);
+
+  // 4. Suppression du compte Auth (dernière étape — irréversible)
+  const { error: authError } = await admin.auth.admin.deleteUser(targetUserId);
+  if (authError) {
+    return { error: `Profil supprimé mais erreur Auth : ${authError.message}` };
+  }
+
+  revalidatePath('/admin');
+  return { ok: `Le compte ${targetProfile.email} a été supprimé définitivement.` };
+}
+
+// ─── Activation / désactivation du mode cinématique (Owner/Super Admin only) ──
+
+/**
+ * Force l'activation ou la désactivation du mode cinématique sur le CV
+ * d'un utilisateur, indépendamment de son plan actuel.
+ * Permet à l'admin d'activer manuellement la fonctionnalité sans changer le plan.
+ */
+export async function setCinematicEnabled(
+  _prevState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+  const enabled = formData.get("enabled") === "true";
+
+  if (!targetUserId) return { error: "ID utilisateur requis." };
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non connecté." };
+
+  const { data: actor } = await supabase
+    .from('profiles')
+    .select('is_owner, is_super_admin, account_status')
+    .eq('id', user.id)
+    .single();
+
+  if (!actor?.is_owner && !actor?.is_super_admin) return { error: "Accès refusé." };
+  if (actor.account_status && actor.account_status !== 'active') return { error: "Compte inactif." };
+
+  const admin = createAdminClient();
+
+  // Vérification de la cible
+  const { data: targetProfile } = await admin
+    .from('profiles')
+    .select('id, email')
+    .eq('id', targetUserId)
+    .maybeSingle();
+
+  if (!targetProfile) return { error: "Compte introuvable." };
+
+  // Mise à jour du flag cinematic_enabled sur le CV
+  const { data: cv } = await admin
+    .from('cvs')
+    .select('id, slug')
+    .eq('user_id', targetUserId)
+    .maybeSingle();
+
+  if (!cv) return { error: "Aucun CV trouvé pour cet utilisateur." };
+
+  const { error: updateError } = await admin
+    .from('cvs')
+    .update({ cinematic_enabled: enabled })
+    .eq('user_id', targetUserId);
+
+  if (updateError) return { error: "Impossible de mettre à jour le mode cinématique." };
+
+  revalidatePath('/admin');
+  revalidatePath(`/${cv.slug}`);
+  return {
+    ok: `Mode cinématique ${enabled ? 'activé' : 'désactivé'} pour ${targetProfile.email}.`,
+  };
+}
+

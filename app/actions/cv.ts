@@ -41,6 +41,11 @@ export interface CvData {
   characteristics?: Array<{ name: string; value: string }>;
   showCharacteristics?: boolean;
   showSections?: Record<string, boolean>;
+  birthDate?: string;
+  nationality?: string;
+  eligibility?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 const EMOJI: Record<string, string> = {
@@ -87,6 +92,11 @@ function rowToCv(row: Record<string, unknown>): CvData {
     characteristics: (row.characteristics as Array<{ name: string; value: string }>) ?? [],
     showCharacteristics: !!row.show_characteristics,
     showSections: (row.show_sections as Record<string, boolean>) || undefined,
+    birthDate: (row.birth_date as string) || undefined,
+    nationality: (row.nationality as string) || undefined,
+    eligibility: (row.eligibility as string) || undefined,
+    contactPhone: (row.contact_phone as string) || undefined,
+    contactEmail: (row.contact_email as string) || undefined,
   };
 }
 
@@ -130,6 +140,11 @@ export interface UpsertCvInput {
   showCharacteristics?: boolean;
   targetUserId?: string;
   showSections?: Record<string, boolean>;
+  birthDate?: string;
+  nationality?: string;
+  eligibility?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 export interface UpsertCvResult {
@@ -241,6 +256,11 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     characteristics: input.characteristics ?? [],
     show_characteristics: !!input.showCharacteristics,
     show_sections: input.showSections ?? { stats: true, palmares: true, career: true, bio: true },
+    birth_date: (input.birthDate ?? '').slice(0, 20) || null,
+    nationality: (input.nationality ?? '').slice(0, 60) || null,
+    eligibility: (input.eligibility ?? '').slice(0, 100) || null,
+    contact_phone: (input.contactPhone ?? '').slice(0, 30) || null,
+    contact_email: (input.contactEmail ?? '').slice(0, 120) || null,
   };
 
   if (existing) {
