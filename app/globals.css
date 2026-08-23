@@ -823,9 +823,23 @@ h2.title {
 }
 .cv-mode-switch a:hover { color: var(--text); }
 .cv-mode-switch .on { background: var(--grad); color: #002451; font-weight: 600; }
+
+.cv-back-to-site {
+  position: fixed; top: 18px; left: 18px; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 18px; border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,18,38,0.72); backdrop-filter: blur(14px);
+  color: var(--muted); font-family: var(--font-body); font-size: 0.72rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  text-decoration: none; transition: background 0.25s, color 0.25s;
+}
+.cv-back-to-site:hover { color: var(--text); background: rgba(0,18,38,0.85); }
+
 @media (max-width: 480px) {
   .cv-mode-switch { top: 12px; right: 12px; }
   .cv-mode-switch a, .cv-mode-switch span { padding: 8px 12px; font-size: 0.62rem; letter-spacing: 0.06em; }
+  .cv-back-to-site { top: 12px; left: 12px; padding: 8px 12px; font-size: 0.62rem; letter-spacing: 0.06em; }
 }
 
 .cine-wrap { position: fixed; inset: 0; color: #fff; font-family: var(--font-body); background: #001226; z-index: 300; }

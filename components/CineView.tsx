@@ -317,6 +317,11 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-brand-bg text-text-main">
+      {/* ---- Bouton retour vers Athlete CV ---- */}
+      <Link href="/dashboard" className="cv-back-to-site" aria-label="Retour au site">
+        ← ATHLETE CV
+      </Link>
+
       {/* ---- Encoche Classique / Cinématique (même logique que le CV de Noa) -- */}
       {classicHref && (
         <nav className="cv-mode-switch" aria-label="Mode de visualisation">

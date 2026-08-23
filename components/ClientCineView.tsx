@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import type { CvData } from '@/app/actions/cv'
 
@@ -17,6 +18,13 @@ interface ClientCineViewProps {
 }
 
 export default function ClientCineView({ cv }: ClientCineViewProps) {
+  useEffect(() => {
+    document.body.classList.add('cine-mode')
+    return () => {
+      document.body.classList.remove('cine-mode')
+    }
+  }, [])
+
   // Préparation de la galerie cinématique avec l'image de fond (cineBg) ou l'avatar
   const gallery = cv.cineBg
     ? [{ src: cv.cineBg, alt: `${cv.first} ${cv.last}`, position: `${cv.cineBgPosX ?? 50}% ${cv.cineBgPosY ?? 50}%` }]
