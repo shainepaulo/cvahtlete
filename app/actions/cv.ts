@@ -330,14 +330,14 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
 
   if (existing) {
     const { error } = await supabase.from("cvs").update(row).eq("id", existing.id);
-    if (error) return { error: "Erreur lors de la sauvegarde." };
+    if (error) return { error: `Erreur lors de la sauvegarde : ${error.message} (${error.code})` };
   } else {
     const { error } = await supabase.from("cvs").insert(row);
     if (error) {
       if (error.code === "23505") {
         return { error: "Slug déjà pris — réessaie ou modifie le slug manuellement." };
       }
-      return { error: "Erreur lors de la création." };
+      return { error: `Erreur lors de la création : ${error.message} (${error.code})` };
     }
   }
 
