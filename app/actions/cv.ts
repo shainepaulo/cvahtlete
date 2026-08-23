@@ -139,6 +139,10 @@ export interface UpsertCvInput {
   characteristics?: Array<{ name: string; value: string }>;
   showCharacteristics?: boolean;
   targetUserId?: string;
+  /** ID d'un CV existant à mettre à jour. Si absent → création d'un nouveau CV. */
+  cvId?: string;
+  /** Slug manuel (optionnel). Si absent → auto-généré depuis first+last. */
+  customSlug?: string;
   showSections?: Record<string, boolean>;
   birthDate?: string;
   nationality?: string;
@@ -163,6 +167,9 @@ function isSafeJson(v: unknown): boolean {
   }
 }
 
+// Limite de CV par compte (hors super admin)
+const CV_LIMIT = 15;
+
 export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { error: "Service indisponible." };
 
@@ -170,18 +177,21 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Non connecté." };
 
+  // ── Résolution de l'utilisateur cible ─────────────────────────────────────
   let userIdToUpsert = user.id;
+  let actorIsAdmin = false;
+
+  const { data: actor } = await supabase
+    .from("profiles")
+    .select("is_owner, is_super_admin, plan")
+    .eq("id", user.id)
+    .single();
+
+  if (actor?.is_owner || actor?.is_super_admin) actorIsAdmin = true;
+
   if (input.targetUserId && input.targetUserId !== user.id) {
-    const { data: actor } = await supabase
-      .from("profiles")
-      .select("is_owner, is_super_admin")
-      .eq("id", user.id)
-      .single();
-    if (actor?.is_owner || actor?.is_super_admin) {
-      userIdToUpsert = input.targetUserId;
-    } else {
-      return { error: "Accès refusé." };
-    }
+    if (!actorIsAdmin) return { error: "Accès refusé." };
+    userIdToUpsert = input.targetUserId;
   }
 
   const first = input.first.trim().slice(0, 60);
@@ -200,39 +210,94 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
 
   const links = normalizePublicLinks(input.links);
 
-  // Snapshot cinematic depuis le plan courant (lecture RLS = self uniquement).
-  const [{ data: profile }, { data: sub }] = await Promise.all([
-    supabase.from("profiles").select("is_owner, plan").eq("id", userIdToUpsert).single(),
+  // ── Plan & droits cinématique ──────────────────────────────────────────────
+  const [{ data: targetProfile }, { data: sub }] = await Promise.all([
+    supabase.from("profiles").select("is_owner, is_super_admin, plan").eq("id", userIdToUpsert).single(),
     supabase.from("subscriptions").select("season_expires_at").eq("user_id", userIdToUpsert).maybeSingle(),
   ]);
   const isSeasonExpired = !!(sub?.season_expires_at && new Date(sub.season_expires_at) < new Date());
-  const cinematic_enabled = !!(
-    profile?.is_owner ||
-    profile?.plan === "club" ||
-    profile?.plan === "pro" || // legacy
-    (profile?.plan === "season" && !isSeasonExpired)
-  );
+  const canMultiCv = !!(actorIsAdmin || targetProfile?.is_owner || targetProfile?.is_super_admin ||
+    targetProfile?.plan === "club");
 
-  // CV existant ?
-  const { data: existing } = await supabase
-    .from("cvs")
-    .select("id, slug")
-    .eq("user_id", userIdToUpsert)
-    .maybeSingle();
+  // ── Ciblage du CV existant ────────────────────────────────────────────────
+  let existing: { id: string; slug: string; cinematic_enabled: boolean } | null = null;
 
-  let slug = (existing?.slug as string | undefined);
+  if (input.cvId) {
+    // Mode édition d'un CV existant précis
+    const { data } = await supabase
+      .from("cvs")
+      .select("id, slug, cinematic_enabled")
+      .eq("id", input.cvId)
+      .eq("user_id", userIdToUpsert)
+      .maybeSingle();
+    existing = data ?? null;
+    if (!existing) return { error: "CV introuvable ou accès refusé." };
+  } else if (!canMultiCv) {
+    // Utilisateur mono-CV : cherche le CV existant par user_id
+    const { data } = await supabase
+      .from("cvs")
+      .select("id, slug, cinematic_enabled")
+      .eq("user_id", userIdToUpsert)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    existing = data ?? null;
+  }
+  // Si canMultiCv et pas de cvId → création d'un nouveau CV
+
+  // ── Vérification de la limite ─────────────────────────────────────────────
+  if (!existing && !input.cvId) {
+    const isSuperAdmin = !!(actor?.is_super_admin || targetProfile?.is_super_admin);
+    if (!isSuperAdmin) {
+      const { count } = await supabase
+        .from("cvs")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userIdToUpsert);
+      if ((count ?? 0) >= CV_LIMIT) {
+        return { error: `Limite de ${CV_LIMIT} CV atteinte pour ce compte.` };
+      }
+    }
+  }
+
+  // ── Slug ──────────────────────────────────────────────────────────────────
+  let slug = existing?.slug;
   if (!slug) {
-    const base = slugify(`${first} ${last}`);
+    const base = input.customSlug
+      ? slugify(input.customSlug)
+      : slugify(`${first} ${last}`);
     const { data: taken } = await supabase
       .from("cvs").select("id").eq("slug", base).maybeSingle();
     slug = taken ? `${base}-${Date.now().toString(36).slice(-4)}` : base;
+  } else if (input.customSlug) {
+    // Slug modifié manuellement
+    const newSlug = slugify(input.customSlug);
+    if (newSlug !== slug) {
+      const { data: taken } = await supabase
+        .from("cvs").select("id").eq("slug", newSlug).maybeSingle();
+      if (taken) return { error: "Ce slug est déjà utilisé — choisis-en un autre." };
+      slug = newSlug;
+    }
   }
+
+  // ── Flag cinématique ──────────────────────────────────────────────────────
+  // On ne touche pas au flag si le CV existe (géré via admin toggle),
+  // sauf à la création où on l'initialise selon le plan.
+  const cinematic_enabled = existing
+    ? existing.cinematic_enabled  // Préserve la valeur existante
+    : !!(
+        targetProfile?.is_owner ||
+        targetProfile?.is_super_admin ||
+        targetProfile?.plan === "club" ||
+        targetProfile?.plan === "pro" ||
+        (targetProfile?.plan === "season" && !isSeasonExpired)
+      );
 
   const row = {
     user_id: userIdToUpsert,
     slug,
     first,
     last,
+    label: `${first} ${last}`,
     sport: input.sport.slice(0, 40),
     discipline: (input.discipline ?? "").slice(0, 60),
     location: (input.location ?? "").slice(0, 80),
@@ -270,23 +335,75 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     const { error } = await supabase.from("cvs").insert(row);
     if (error) {
       if (error.code === "23505") {
-        const msg = `${error.message ?? ""}`.toLowerCase();
-        if (msg.includes("cvs_user_id_unique") || msg.includes("user_id")) {
-          return { error: "Un répertoire existe déjà pour ce compte." };
-        }
-        return { error: "Slug déjà pris — réessaie." };
+        return { error: "Slug déjà pris — réessaie ou modifie le slug manuellement." };
       }
       return { error: "Erreur lors de la création." };
     }
   }
 
   revalidatePath(`/${slug}`);
+  revalidatePath("/dashboard");
   return { slug };
 }
 
-// ─── Lecture : CV de l'utilisateur courant ───────────────────────────────────
+// ─── Lecture : liste de tous les CV d'un compte ──────────────────────────────
 
-export async function getMyCv(targetUserId?: string): Promise<CvData | null> {
+export interface CvSummary {
+  id: string;
+  slug: string;
+  label: string;
+  first: string;
+  last: string;
+  sport: string;
+  emoji: string;
+  avatar?: string;
+  visibility: string;
+  cinematic_enabled: boolean;
+  created_at: string;
+}
+
+export async function listMyCvs(targetUserId?: string): Promise<CvSummary[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return [];
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  let userIdToFetch = user.id;
+
+  if (targetUserId && targetUserId !== user.id) {
+    const { data: actor } = await supabase
+      .from("profiles")
+      .select("is_owner, is_super_admin")
+      .eq("id", user.id)
+      .single();
+    if (!(actor?.is_owner || actor?.is_super_admin)) return [];
+    userIdToFetch = targetUserId;
+  }
+
+  const { data } = await supabase
+    .from("cvs")
+    .select("id, slug, label, first, last, sport, avatar_url, visibility, cinematic_enabled, created_at")
+    .eq("user_id", userIdToFetch)
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    slug: String(row.slug),
+    label: String(row.label || `${row.first} ${row.last}`),
+    first: String(row.first),
+    last: String(row.last),
+    sport: String(row.sport),
+    emoji: EMOJI[String(row.sport)] ?? "🏅",
+    avatar: (row.avatar_url as string) || undefined,
+    visibility: String(row.visibility),
+    cinematic_enabled: !!(row.cinematic_enabled),
+    created_at: String(row.created_at),
+  }));
+}
+
+// ─── Lecture : CV de l'utilisateur courant (premier CV ou par cvId) ───────────
+
+export async function getMyCv(targetUserId?: string, cvId?: string): Promise<CvData | null> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -310,8 +427,14 @@ export async function getMyCv(targetUserId?: string): Promise<CvData | null> {
     return null;
   }
 
-  const { data } = await supabase
-    .from("cvs").select("*").eq("user_id", userIdToFetch).maybeSingle();
+  // Si cvId fourni → CV précis, sinon → premier CV du compte
+  let query = supabase.from("cvs").select("*").eq("user_id", userIdToFetch);
+  if (cvId) {
+    query = query.eq("id", cvId);
+  } else {
+    query = query.order("created_at", { ascending: true }).limit(1);
+  }
+  const { data } = await query.maybeSingle();
   if (!data) return null;
   const cv = rowToCv(data as Record<string, unknown>);
 
@@ -341,7 +464,7 @@ export async function getMyCv(targetUserId?: string): Promise<CvData | null> {
 
   cv.hasPro = hasPaid;
   cv.plan = isActorAdmin ? 'club' : (profile?.plan ?? 'free');
-  cv.blocked = false; // Plus de blocage automatique des CV gratuits
+  cv.blocked = false;
   cv.showSections = cv.showSections ?? { stats: true, palmares: true, career: true, bio: true };
   return cv;
 }

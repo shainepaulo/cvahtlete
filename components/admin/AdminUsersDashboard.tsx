@@ -17,6 +17,8 @@ export interface AdminUserRow {
   created_at: string
   trial_ends_at: string | null
   sub_status: string | null
+  cvs: Array<{ id: string; slug: string; visibility: string; first: string; last: string; cinematic_enabled?: boolean }>
+  /** @deprecated use cvs[0] — kept for backward compat */
   cv: { id: string; slug: string; visibility: string; first: string; last: string; cinematic_enabled?: boolean } | null
 }
 
@@ -137,12 +139,11 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
   }
 
   // CV visibility handler
-  const handleVisChange = (visibility: 'public' | 'private') => {
+  const handleVisChange = (visibility: 'public' | 'private', cvId: string) => {
     setVisMsg(null)
-    if (!row.cv) return
     startVisTransition(async () => {
       const formData = new FormData()
-      formData.append('cv_id', row.cv!.id)
+      formData.append('cv_id', cvId)
       formData.append('visibility', visibility)
       const res = await setCvVisibility({}, formData)
       if (res.error) setVisMsg(res.error)
@@ -184,65 +185,90 @@ function UserRow({ row, currentEmail }: { row: AdminUserRow; currentEmail: strin
 
   return (
     <>
-      {/* Colonne Identité */}
       <td style={{ padding: '16px 12px', verticalAlign: 'top' }}>
         <div style={{ display: 'grid', gap: 3 }}>
           <strong style={{ fontSize: '0.95rem' }}>{row.full_name || 'Sans nom'}</strong>
           <span style={{ color: 'var(--muted-2)', fontSize: '0.82rem' }}>{row.email}</span>
           <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', fontFamily: 'monospace' }}>ID: {row.id}</span>
-          {row.cv ? (
-            <div style={{ marginTop: 8, fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)', display: 'grid', gap: 4 }}>
-              <span>📝 CV: <strong>{row.cv.first} {row.cv.last}</strong></span>
-              <span>🔗 Slug: <a href={`/${row.cv.slug}`} target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>/{row.cv.slug}</a></span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                Visibilité: <strong style={{ color: row.cv.visibility === 'public' ? 'var(--accent-2)' : 'var(--muted)' }}>{row.cv.visibility === 'public' ? 'Public' : 'Privé'}</strong>
-                {canManage && (
-                  <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                    <button onClick={() => handleVisChange('public')} disabled={visPending || row.cv!.visibility === 'public'} className="mini-btn" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Public</button>
-                    <button onClick={() => handleVisChange('private')} disabled={visPending || row.cv!.visibility === 'private'} className="mini-btn danger" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Privé</button>
+
+          {/* Liste des CV (multi-CV) */}
+          {(row.cvs ?? (row.cv ? [row.cv] : [])).length > 0 ? (
+            <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+              {(row.cvs ?? (row.cv ? [row.cv] : [])).map((cv) => (
+                <div key={cv.id} style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)', display: 'grid', gap: 4 }}>
+                  <span>📝 CV: <strong>{cv.first} {cv.last}</strong></span>
+                  <span>🔗 Slug: <a href={`/${cv.slug}`} target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>/{cv.slug}</a></span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Visibilité: <strong style={{ color: cv.visibility === 'public' ? 'var(--accent-2)' : 'var(--muted)' }}>{cv.visibility === 'public' ? 'Public' : 'Privé'}</strong>
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                        <button onClick={() => handleVisChange('public', cv.id)} disabled={visPending || cv.visibility === 'public'} className="mini-btn" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Public</button>
+                        <button onClick={() => handleVisChange('private', cv.id)} disabled={visPending || cv.visibility === 'private'} className="mini-btn danger" style={{ padding: '2px 6px', fontSize: '0.65rem' }}>Privé</button>
+                      </div>
+                    )}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <a href={`/builder/classique?u=${row.id}&cv=${cv.id}`} className="mini-btn" style={{ background: 'rgba(56, 216, 255, 0.1)', color: '#38d8ff', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      ✏️ Modifier classique
+                    </a>
+                    <a href={`/builder/cinematique?u=${row.id}&cv=${cv.id}`} className="mini-btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: 'var(--gold)', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      🎬 Modifier cinématique
+                    </a>
                   </div>
-                )}
-              </span>
-              <div style={{ display: 'flex', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <a href={`/builder/classique?u=${row.id}`} className="mini-btn" style={{ background: 'rgba(56, 216, 255, 0.1)', color: '#38d8ff', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  ✏️ Modifier classique
-                </a>
-                <a href={`/builder/cinematique?u=${row.id}`} className="mini-btn" style={{ background: 'rgba(234, 179, 8, 0.1)', color: 'var(--gold)', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  🎬 Modifier cinématique
-                </a>
-              </div>
-              {/* Toggle cinématique */}
-              {canManage && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--muted-2)' }}>🎬 Cinématique :</span>
-                  <strong style={{ fontSize: '0.72rem', color: row.cv?.cinematic_enabled ? '#34d399' : 'var(--muted)' }}>
-                    {row.cv?.cinematic_enabled ? 'Activé' : 'Désactivé'}
-                  </strong>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={() => handleCineToggle(true)}
-                      disabled={cinePending || !!row.cv?.cinematic_enabled}
-                      className="mini-btn"
-                      style={{ padding: '2px 6px', fontSize: '0.65rem', background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
-                    >
-                      {cinePending ? '…' : 'Activer'}
-                    </button>
-                    <button
-                      onClick={() => handleCineToggle(false)}
-                      disabled={cinePending || !row.cv?.cinematic_enabled}
-                      className="mini-btn danger"
-                      style={{ padding: '2px 6px', fontSize: '0.65rem' }}
-                    >
-                      {cinePending ? '…' : 'Désactiver'}
-                    </button>
-                  </div>
+                  {/* Toggle cinématique */}
+                  {canManage && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--muted-2)' }}>🎬 Cinématique :</span>
+                      <strong style={{ fontSize: '0.72rem', color: cv.cinematic_enabled ? '#34d399' : 'var(--muted)' }}>
+                        {cv.cinematic_enabled ? 'Activé' : 'Désactivé'}
+                      </strong>
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                        <button
+                          onClick={() => handleCineToggle(true)}
+                          disabled={cinePending || !!cv.cinematic_enabled}
+                          className="mini-btn"
+                          style={{ padding: '2px 6px', fontSize: '0.65rem', background: 'rgba(52,211,153,0.15)', color: '#34d399' }}
+                        >
+                          {cinePending ? '…' : 'Activer'}
+                        </button>
+                        <button
+                          onClick={() => handleCineToggle(false)}
+                          disabled={cinePending || !cv.cinematic_enabled}
+                          className="mini-btn danger"
+                          style={{ padding: '2px 6px', fontSize: '0.65rem' }}
+                        >
+                          {cinePending ? '…' : 'Désactiver'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
               {cineMsg && <span style={{ color: cineMsg.startsWith('Mode') ? '#34d399' : 'var(--red)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{cineMsg}</span>}
               {visMsg && <span style={{ color: 'var(--muted-2)', fontSize: '0.7rem', display: 'block', marginTop: 2 }}>{visMsg}</span>}
+              {canManage && (
+                <a
+                  href={`/builder/classique?u=${row.id}`}
+                  className="mini-btn"
+                  style={{ textDecoration: 'none', marginTop: 4, background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', padding: '4px 10px', fontSize: '0.72rem', borderRadius: 4, textAlign: 'center' }}
+                >
+                  + Ajouter un joueur
+                </a>
+              )}
             </div>
           ) : (
-            <span style={{ color: 'var(--muted-2)', fontSize: '0.78rem', fontStyle: 'italic', marginTop: 4 }}>Aucun CV créé</span>
+            <div style={{ marginTop: 8 }}>
+              <span style={{ color: 'var(--muted-2)', fontSize: '0.78rem', fontStyle: 'italic' }}>Aucun CV créé</span>
+              {canManage && (
+                <a
+                  href={`/builder/classique?u=${row.id}`}
+                  className="mini-btn"
+                  style={{ display: 'block', textDecoration: 'none', marginTop: 6, background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', padding: '4px 10px', fontSize: '0.72rem', borderRadius: 4, textAlign: 'center' }}
+                >
+                  + Créer un CV
+                </a>
+              )}
+            </div>
           )}
         </div>
       </td>

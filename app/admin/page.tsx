@@ -83,24 +83,28 @@ export default async function AdminPage({ searchParams }: Params) {
   const usersList = (profiles ?? [])
   const userIds = usersList.map((u) => u.id)
 
-  // Joindre les CVs correspondants aux utilisateurs affichés (10 max)
-  const cvsMap = new Map<string, AdminUserRow['cv']>()
+  // Joindre les CVs correspondants aux utilisateurs affichés (multi-CV)
+  const cvsMap = new Map<string, Array<{ id: string; slug: string; visibility: string; first: string; last: string; cinematic_enabled: boolean }>>()
   if (userIds.length > 0) {
     const { data: cvRows } = await admin
       .from('cvs')
       .select('id, slug, visibility, first, last, user_id, cinematic_enabled')
       .in('user_id', userIds)
+      .order('created_at', { ascending: true })
 
     if (cvRows) {
       cvRows.forEach((row) => {
-        cvsMap.set(String(row.user_id), {
+        const uid = String(row.user_id)
+        const cv = {
           id: String(row.id),
           slug: String(row.slug),
           visibility: String(row.visibility),
           first: String(row.first),
           last: String(row.last),
           cinematic_enabled: !!row.cinematic_enabled,
-        })
+        }
+        const existing = cvsMap.get(uid) ?? []
+        cvsMap.set(uid, [...existing, cv])
       })
     }
   }
@@ -125,7 +129,7 @@ export default async function AdminPage({ searchParams }: Params) {
 
   // Fusionner les données pour le composant client
   const users: AdminUserRow[] = usersList.map((p) => {
-    const cv = cvsMap.get(p.id) ?? null
+    const cvs = cvsMap.get(p.id) ?? []
     const sub = subsMap.get(p.id) ?? null
     return {
       id: p.id,
@@ -138,7 +142,8 @@ export default async function AdminPage({ searchParams }: Params) {
       created_at: p.created_at,
       trial_ends_at: sub?.trial_ends_at ?? null,
       sub_status: sub?.status ?? null,
-      cv,
+      cvs,
+      cv: cvs[0] ?? null,  // compat backward
     }
   })
 

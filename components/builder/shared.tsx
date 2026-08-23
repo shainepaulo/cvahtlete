@@ -211,6 +211,7 @@ export function useCvBuilder(nextPath: string) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const targetUserId = searchParams.get('u') || undefined
+  const cvId = searchParams.get('cv') || undefined
   const [user, setUser] = useState<BuilderUser | null>(null)
   const [saving, setSaving] = useState(false)
   const [alertMsg, setAlertMsg] = useState<BuilderAlertState | null>(null)
@@ -271,7 +272,7 @@ export function useCvBuilder(nextPath: string) {
         cv: null,
       })
     })
-    getMyCv(targetUserId).then((cv) => {
+    getMyCv(targetUserId, cvId).then((cv) => {
       if (!cv) return
       setUser((u) => u ? { ...u, cv: { slug: cv.slug } } : u)
       setFirst(cv.first || '')
@@ -382,6 +383,7 @@ export function useCvBuilder(nextPath: string) {
       characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()) as Array<{ name: string; value: string }>,
       showCharacteristics,
       targetUserId,
+      cvId,
       showSections,
       birthDate: birthDate || undefined,
       nationality: nationality || undefined,
@@ -411,7 +413,7 @@ export function useCvBuilder(nextPath: string) {
     cropZoomCineBg, setCropZoomCineBg,
     stats, setStats, palmares, setPalmares, career, setCareer,
     characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
-    targetUserId, showSections, setShowSections,
+    targetUserId, cvId, showSections, setShowSections,
     birthDate, setBirthDate, nationality, setNationality, eligibility, setEligibility,
     contactPhone, setContactPhone, contactEmail, setContactEmail,
   }
