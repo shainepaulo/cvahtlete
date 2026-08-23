@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import AdminUsersDashboard, { type AdminUserRow } from '@/components/admin/AdminUsersDashboard'
-import AdminPrivacyToggle from '@/components/admin/AdminPrivacyToggle'
 
 interface Params {
   searchParams: {
@@ -180,9 +179,8 @@ export default async function AdminPage({ searchParams }: Params) {
         totalCount={count ?? 0}
         currentPage={page}
         pageSize={pageSize}
+        initialMasked={adminForceContactMask}
       />
-
-      <AdminPrivacyToggle initialMasked={adminForceContactMask} />
 
       <div className="app-card" style={{ marginTop: 20 }}>
         <p style={{ color: 'var(--muted-2)', fontSize: '.82rem' }}>
