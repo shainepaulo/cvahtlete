@@ -325,7 +325,7 @@ export function useCvBuilder(nextPath: string) {
       setContactPhone(cv.contactPhone || '')
       setContactEmail(cv.contactEmail || '')
     })
-  }, [router, nextPath, targetUserId])
+  }, [router, nextPath, targetUserId, cvId])
 
   /** Payload complet du CV (aperçu postMessage ET enregistrement). */
   const buildPayload = useCallback(() => ({
