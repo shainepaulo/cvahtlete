@@ -4,8 +4,12 @@ import Link from 'next/link'
 import { getCvBySlug } from '@/app/actions/cv'
 import { createClient } from '@/utils/supabase/server'
 import ProfileView from '@/components/ProfileView'
+import ClientCineView from '@/components/ClientCineView'
 
-interface Params { params: { slug: string } }
+interface Params {
+  params: { slug: string }
+  searchParams: { mode?: string }
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const cv = await getCvBySlug(params.slug)
@@ -22,9 +26,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 }
 
-export default async function SlugPage({ params }: Params) {
+export default async function SlugPage({ params, searchParams }: Params) {
   const cv = await getCvBySlug(params.slug)
   if (!cv) notFound()
+
+  const mode = searchParams?.mode
 
   // Déterminer si le visiteur connecté est propriétaire du CV (CTA adaptatif).
   let isOwn = false
@@ -65,6 +71,11 @@ export default async function SlugPage({ params }: Params) {
         </div>
       )
     }
+  }
+
+  // Si la vue cinématique est activée en base de données et non-outpassée par le paramètre mode
+  if (cv.cinematic && mode !== 'classic') {
+    return <ClientCineView cv={cv} />
   }
 
   return <ProfileView cv={cv} isOwn={isOwn} hasPro={hasPro} />

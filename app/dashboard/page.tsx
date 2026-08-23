@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { signOut } from '@/app/actions/auth'
 import { listMyCvs } from '@/app/actions/cv'
 import { TrialBanner } from '@/components/billing/TrialBanner'
+import DeleteCvButton from '@/components/DeleteCvButton'
 
 const PLAN_LABEL: Record<string, string> = {
   free: 'Gratuit',
@@ -187,6 +188,7 @@ export default async function DashboardPage() {
                           🎬
                         </Link>
                       )}
+                      <DeleteCvButton cvId={cv.id} label={cv.label} />
                     </div>
                   </div>
                 ))}

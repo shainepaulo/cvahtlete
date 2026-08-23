@@ -196,6 +196,14 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
         style={{ '--a': colorA, '--b': colorB } as React.CSSProperties}
         ref={revealRef}
       >
+        {cv.cinematic && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 20, marginBottom: -10 }}>
+            <Link className="cine-ribbon" href={`/${cv.slug}`} style={{ position: 'relative', top: 'auto', left: 'auto', transform: 'none', margin: '0 auto' }}>
+              <span className="cine-ribbon-dot" />
+              🎬 Mode cinématique
+            </Link>
+          </div>
+        )}
         <article className="p-hero reveal">
           <div className="p-cover">
             <span className="sport-emoji">{cv.emoji || '🏅'}</span>

@@ -545,3 +545,46 @@ export async function listPublicCvs(): Promise<PublicCvSummary[]> {
     avatar: (row.avatar_url as string) || undefined,
   }));
 }
+
+export async function deleteCv(cvId: string): Promise<{ ok?: string; error?: string }> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return { error: "Service indisponible." };
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Non connecté." };
+
+  // Double vérification : l'utilisateur courant doit être propriétaire du CV (ou admin/owner)
+  const { data: cv, error: fetchError } = await supabase
+    .from("cvs")
+    .select("id, user_id, slug")
+    .eq("id", cvId)
+    .maybeSingle();
+
+  if (fetchError || !cv) return { error: "CV introuvable." };
+
+  // Est-il admin ou propriétaire ?
+  let authorized = cv.user_id === user.id;
+  if (!authorized) {
+    const { data: actor } = await supabase
+      .from("profiles")
+      .select("is_owner, is_super_admin")
+      .eq("id", user.id)
+      .single();
+    if (actor?.is_owner || actor?.is_super_admin) {
+      authorized = true;
+    }
+  }
+
+  if (!authorized) return { error: "Action non autorisée." };
+
+  // Suppression
+  const admin = createAdminClient();
+  const { error: deleteError } = await admin.from("cvs").delete().eq("id", cvId);
+  if (deleteError) return { error: "Impossible de supprimer le CV." };
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+  revalidatePath("/bibliotheque");
+  revalidatePath(`/${cv.slug}`);
+  return { ok: "CV supprimé avec succès." };
+}
