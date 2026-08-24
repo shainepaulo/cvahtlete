@@ -152,18 +152,19 @@
 .cvc-page .team-badge span { font-size: 0.85rem; font-weight: 600; color: var(--light); }
 
 /* Contact Grid */
-.cvc-page .contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.cvc-page .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .cvc-page .contact-item {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
   background: rgba(255, 255, 255, 0.08);
-  padding: 12px 15px; border-radius: 12px;
+  padding: 10px 14px; border-radius: 12px;
   transition: background 0.3s ease;
   min-width: 0;
   text-decoration: none;
+  overflow: visible;
 }
 .cvc-page .contact-item:hover { background: rgba(255, 255, 255, 0.12); }
-.cvc-page .contact-icon { font-size: 1.3rem; }
-.cvc-page .contact-content { display: flex; flex-direction: column; min-width: 0; }
+.cvc-page .contact-icon { font-size: 1.3rem; shrink: 0; }
+.cvc-page .contact-content { display: flex; flex-direction: column; min-width: 0; overflow: visible; }
 .cvc-page .contact-label {
   font-size: 0.65rem; color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase; letter-spacing: 0.05em;

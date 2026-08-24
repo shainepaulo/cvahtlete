@@ -253,12 +253,10 @@ export function CvCompletView({ profile, backHref, cvSlug, adminForceMask, isAdm
               </h2>
               <div className="skills-grid">
                 {complet.skills.map((s) => (
-                  <div key={s.name} className="skill-item">
-                    <span className="skill-name">{s.name}</span>
-                    <div className="skill-bar">
-                      <div className="skill-fill" style={{ '--width': `${s.value}%` } as React.CSSProperties} />
-                    </div>
-                    <span className="skill-value">{s.value}</span>
+                  <div key={s.name} className="skill-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span className="skill-name" style={{ flexShrink: 0 }}>{s.name}</span>
+                    <div style={{ flex: 1, borderBottom: '1px dotted rgba(255, 255, 255, 0.2)', margin: '0 8px', height: '1px', alignSelf: 'center' }} />
+                    <span className="skill-value" style={{ flexShrink: 0, fontWeight: 'bold' }}>{s.value}</span>
                   </div>
                 ))}
               </div>

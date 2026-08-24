@@ -567,8 +567,8 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
             role="dialog"
             aria-label="Statistiques et palmarès"
           >
-            {/* Header du panneau avec titre et bouton fermer */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+            {/* Header sticky du panneau avec titre et bouton fermer toujours visible */}
+            <div className="sticky top-0 z-[550] -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 flex items-center justify-between border-b border-white/10 bg-[#001b3d]/95 p-6 sm:px-8 py-4 backdrop-blur-xl mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📊</span>
                 <h3 className="font-display text-lg font-bold text-text-main">
@@ -578,8 +578,8 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
               <button
                 type="button"
                 onClick={() => setPanelOpen(false)}
-                aria-label="Fermer"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-sm font-bold text-white backdrop-blur-md transition hover:bg-black/80 hover:scale-105 active:scale-95 cursor-pointer"
+                aria-label="Fermer le panneau"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/50 text-base font-bold text-white shadow-lg backdrop-blur-xl transition hover:bg-black/90 hover:scale-110 active:scale-95 cursor-pointer"
               >
                 ✕
               </button>
