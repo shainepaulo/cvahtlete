@@ -69,6 +69,9 @@ export async function uploadVideo(
   if (file.size > MAX_VIDEO_BYTES) {
     return { error: "Vidéo trop lourde (150 Mo max). Pour un clip plus long, privilégie un lien YouTube ou Vimeo." };
   }
+  if (file.type && !ALLOWED_VIDEO_TYPES.has(file.type.toLowerCase()) && !file.name.match(/\.(mp4|webm|mov|m4v)$/i)) {
+    return { error: "Format vidéo non supporté (MP4, WebM, MOV acceptés)." };
+  }
 
   const targetUserId = formData.get("targetUserId") as string | null;
   let userIdToUse = user.id;

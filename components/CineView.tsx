@@ -306,6 +306,27 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
     changePhoto(1);
   };
 
+  // Résolution robuste des vidéos (depuis cv.videos ou showSections._videos)
+  const videosList = useMemo(() => {
+    const raw = (Array.isArray(cv.videos) && cv.videos.length > 0)
+      ? cv.videos
+      : (cv.showSections && typeof cv.showSections === 'object' && Array.isArray((cv.showSections as Record<string, unknown>)._videos)
+          ? (cv.showSections as Record<string, unknown>)._videos as Array<{ title: string; url: string }>
+          : []);
+
+    return raw.map(vid => {
+      const urlRaw = (vid.url || '').trim();
+      const titleRaw = (vid.title || '').trim();
+      const videoUrl = urlRaw || (titleRaw.startsWith('http') || titleRaw.includes('youtu') || titleRaw.includes('vimeo') ? titleRaw : '');
+      const videoTitle = videoUrl === titleRaw ? '' : titleRaw;
+      return videoUrl ? { url: videoUrl, title: videoTitle } : null;
+    }).filter(Boolean) as Array<{ url: string; title: string }>;
+  }, [cv.videos, cv.showSections]);
+
+  const hasVideos = videosList.length > 0;
+  const hasDetails =
+    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0 || hasVideos;
+
   // ---- Verrou premium : le booléen vient du SERVEUR (entitlements RLS) ----
   if (!cinematic) {
     return (
@@ -329,27 +350,6 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
       </section>
     );
   }
-
-  // Résolution robuste des vidéos (depuis cv.videos ou showSections._videos)
-  const videosList = useMemo(() => {
-    const raw = (Array.isArray(cv.videos) && cv.videos.length > 0)
-      ? cv.videos
-      : (cv.showSections && typeof cv.showSections === 'object' && Array.isArray((cv.showSections as Record<string, unknown>)._videos)
-          ? (cv.showSections as Record<string, unknown>)._videos as Array<{ title: string; url: string }>
-          : []);
-
-    return raw.map(vid => {
-      const urlRaw = (vid.url || '').trim();
-      const titleRaw = (vid.title || '').trim();
-      const videoUrl = urlRaw || (titleRaw.startsWith('http') || titleRaw.includes('youtu') || titleRaw.includes('vimeo') ? titleRaw : '');
-      const videoTitle = videoUrl === titleRaw ? '' : titleRaw;
-      return videoUrl ? { url: videoUrl, title: videoTitle } : null;
-    }).filter(Boolean) as Array<{ url: string; title: string }>;
-  }, [cv.videos, cv.showSections]);
-
-  const hasVideos = videosList.length > 0;
-  const hasDetails =
-    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0 || hasVideos;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-brand-bg text-text-main">

@@ -772,6 +772,9 @@ function ClassiqueContent() {
               <button type="button" className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={() => setShowImportModal(false)} disabled={importing}>
                 Annuler
               </button>
+              <button type="button" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={handleImport} disabled={importing || !importUrl}>
+                {importing ? 'Importation...' : 'Importer'}
+              </button>
             </div>
           </div>
         </div>

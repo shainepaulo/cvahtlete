@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { CvData } from '@/app/actions/cv'
 import { BlurValue } from '@/components/privacy/BlurValue'
-import { PlayerVideo } from '@/components/PlayerVideo'
 import './noa/complet/cv-complet.css'
 
 interface Props {
