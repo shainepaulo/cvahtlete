@@ -356,7 +356,7 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     cinematic_enabled,
     characteristics: input.characteristics ?? [],
     show_characteristics: !!input.showCharacteristics,
-    show_sections: input.showSections ?? { stats: true, palmares: true, career: true, bio: true },
+    show_sections: showSectionsPayload,
     birth_date: (input.birthDate ?? '').slice(0, 20) || null,
     nationality: (input.nationality ?? '').slice(0, 60) || null,
     eligibility: (input.eligibility ?? '').slice(0, 100) || null,

@@ -498,9 +498,28 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
           )}
 
           {data.links.map((link) => {
-            const labelLower = link.label.toLowerCase();
-            const isInsta = labelLower.includes('insta');
-            const isX = labelLower === 'x' || labelLower.includes('twitter');
+            const labelLower = (link.label || '').toLowerCase();
+            const urlLower = (link.url || '').toLowerCase();
+            const isInsta = labelLower.includes('insta') || urlLower.includes('instagram');
+            const isX = labelLower === 'x' || labelLower.includes('twitter') || urlLower.includes('twitter') || urlLower.includes('x.com');
+            
+            if (isInsta) {
+              return (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="font-body flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 backdrop-blur-md transition hover:border-[#e1306c]/70 hover:bg-white/10 hover:scale-105 active:scale-95"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-[#e1306c]" aria-hidden>
+                    <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0 3.68A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.4-11.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z" />
+                  </svg>
+                </a>
+              );
+            }
+
             return (
               <a
                 key={link.url}
@@ -509,11 +528,6 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
                 rel="noopener noreferrer"
                 className="font-body flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-text-muted backdrop-blur-md transition hover:border-accent-2/50 hover:text-text-main"
               >
-                {isInsta && (
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-[#e1306c]" aria-hidden>
-                    <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0 3.68A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.4-11.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z" />
-                  </svg>
-                )}
                 {isX && (
                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white" aria-hidden>
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
