@@ -412,7 +412,8 @@ export function useCvBuilder(nextPath: string) {
     stats: true,
     palmares: true,
     career: true,
-    bio: true
+    bio: true,
+    videos: true
   })
   const [birthDate, setBirthDate] = useState('')
   const [nationality, setNationality] = useState('')
@@ -492,7 +493,8 @@ export function useCvBuilder(nextPath: string) {
           stats: cv.showSections.stats !== false,
           palmares: cv.showSections.palmares !== false,
           career: cv.showSections.career !== false,
-          bio: cv.showSections.bio !== false
+          bio: cv.showSections.bio !== false,
+          videos: cv.showSections.videos !== false
         })
       }
       setBirthDate(cv.birthDate || '')
