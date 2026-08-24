@@ -24,6 +24,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CvData } from "@/app/actions/cv";
+import { PlayerVideo } from "@/components/PlayerVideo";
 
 // ===========================================================================
 // 1. CHARTE — Tomorrow Night Blue
@@ -72,7 +73,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 interface CineStat { label: string; value: string; unit: string }
-interface CinePalmares { icon: string; name: string; count: string }
+interface CinePalmares { icon: string; name: string; count: string; detail: string }
 interface CineCareer { year: string; club: string; detail: string }
 interface CineLink { label: string; url: string }
 
@@ -94,7 +95,8 @@ function parsePalmares(raw: unknown): CinePalmares[] {
     const icon = toSafeText(item.icon, 8);
     const name = toSafeText(item.name);
     const count = toSafeText(item.count, 12);
-    return name ? [{ icon, name, count }] : [];
+    const detail = toSafeText(item.detail);
+    return name ? [{ icon, name, count, detail }] : [];
   });
 }
 
@@ -119,7 +121,19 @@ function parseLinks(raw: unknown): CineLink[] {
   });
 }
 
-interface CineGalleryPhoto { src: string; alt: string; position: string }
+interface CineGalleryPhoto {
+  src: string;
+  alt: string;
+  posX: number;
+  posY: number;
+  zoom: number;
+  position?: string;
+}
+
+function cropTf(x = 50, y = 50, z = 1.4) {
+  const m = (z - 1) / 2 * 100;
+  return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`;
+}
 
 /** Galerie de fond : chemins locaux (/images/...) ou https uniquement. */
 function parseGallery(raw: unknown): CineGalleryPhoto[] {
@@ -129,10 +143,14 @@ function parseGallery(raw: unknown): CineGalleryPhoto[] {
     const local = typeof item.src === "string" && item.src.startsWith("/") && !item.src.startsWith("//");
     const src = local ? (item.src as string) : toSafeHttpsUrl(item.src) ?? "";
     if (!src) return [];
+    const position = toSafeText(item.position, 24) || undefined;
     return [{
       src,
       alt: toSafeText(item.alt, 120),
-      position: toSafeText(item.position, 24) || "center",
+      posX: typeof item.posX === "number" ? item.posX : 50,
+      posY: typeof item.posY === "number" ? item.posY : 50,
+      zoom: typeof item.zoom === "number" ? item.zoom : 1.25,
+      position,
     }];
   });
 }
@@ -312,18 +330,38 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
     );
   }
 
+  // Résolution robuste des vidéos (depuis cv.videos ou showSections._videos)
+  const videosList = useMemo(() => {
+    const raw = (Array.isArray(cv.videos) && cv.videos.length > 0)
+      ? cv.videos
+      : (cv.showSections && typeof cv.showSections === 'object' && Array.isArray((cv.showSections as Record<string, unknown>)._videos)
+          ? (cv.showSections as Record<string, unknown>)._videos as Array<{ title: string; url: string }>
+          : []);
+
+    return raw.map(vid => {
+      const urlRaw = (vid.url || '').trim();
+      const titleRaw = (vid.title || '').trim();
+      const videoUrl = urlRaw || (titleRaw.startsWith('http') || titleRaw.includes('youtu') || titleRaw.includes('vimeo') ? titleRaw : '');
+      const videoTitle = videoUrl === titleRaw ? '' : titleRaw;
+      return videoUrl ? { url: videoUrl, title: videoTitle } : null;
+    }).filter(Boolean) as Array<{ url: string; title: string }>;
+  }, [cv.videos, cv.showSections]);
+
+  const hasVideos = videosList.length > 0;
   const hasDetails =
-    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0;
+    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0 || hasVideos;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-brand-bg text-text-main">
       {/* ---- Bouton retour vers Athlete CV ---- */}
-      <Link href="/dashboard" className="cv-back-to-site" aria-label="Retour au site">
-        ← ATHLETE CV
-      </Link>
+      {!panelOpen && (
+        <Link href="/dashboard" className="cv-back-to-site" aria-label="Retour au site">
+          ← ATHLETE CV
+        </Link>
+      )}
 
       {/* ---- Encoche Classique / Cinématique (même logique que le CV de Noa) -- */}
-      {classicHref && (
+      {!panelOpen && classicHref && (
         <nav className="cv-mode-switch" aria-label="Mode de visualisation">
           <Link href={classicHref}>📄 Classique</Link>
           <span className="on" aria-current="page">🎬 Cinématique</span>
@@ -332,7 +370,7 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
 
       {/* ---- Fond : photo plein écran (comme Noa) ou dégradés de la charte -- */}
       {hasGallery ? (
-        <div aria-hidden className="absolute inset-0">
+        <div aria-hidden className="absolute inset-0" style={{ overflow: "hidden" }}>
           <Image
             src={(photos[photoIndex] ?? photos[0]).src}
             alt=""
@@ -341,7 +379,11 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
             unoptimized
             style={{
               objectFit: "cover",
-              objectPosition: (photos[photoIndex] ?? photos[0]).position,
+              transform: (photos[photoIndex] ?? photos[0]).position
+                ? undefined
+                : cropTf((photos[photoIndex] ?? photos[0]).posX, (photos[photoIndex] ?? photos[0]).posY, (photos[photoIndex] ?? photos[0]).zoom),
+              transformOrigin: "center",
+              objectPosition: (photos[photoIndex] ?? photos[0]).position || undefined,
               filter: "brightness(.92) contrast(1.06)",
             }}
           />
@@ -434,28 +476,58 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
               📊 Stats &amp; palmarès
             </button>
           )}
+
           <Link
             href={completHref ?? `/${cv.slug}`}
             className="font-body rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm backdrop-blur-md transition hover:border-accent/50"
           >
             📄 CV complet
           </Link>
-          {data.links.map((link) => (
-            <a
-              key={link.url}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-body rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-text-muted backdrop-blur-md transition hover:border-accent-2/50 hover:text-text-main"
+
+          {hasVideos && (
+            <button
+              type="button"
+              onClick={() => setPanelOpen(true)}
+              className="font-body flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm backdrop-blur-md transition hover:border-accent/50"
             >
-              {link.label}
-            </a>
-          ))}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-accent" aria-hidden>
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <span>Vidéos</span>
+            </button>
+          )}
+
+          {data.links.map((link) => {
+            const labelLower = link.label.toLowerCase();
+            const isInsta = labelLower.includes('insta');
+            const isX = labelLower === 'x' || labelLower.includes('twitter');
+            return (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-body flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm text-text-muted backdrop-blur-md transition hover:border-accent-2/50 hover:text-text-main"
+              >
+                {isInsta && (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-[#e1306c]" aria-hidden>
+                    <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0 3.68A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 16 12a4 4 0 0 1-4 4zm6.4-11.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z" />
+                  </svg>
+                )}
+                {isX && (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white" aria-hidden>
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                )}
+                <span>{link.label}</span>
+              </a>
+            );
+          })}
         </motion.div>
       </motion.section>
 
       {/* ---- Navigation galerie : compteur + flèches gauche/droite ---------- */}
-      {photos.length > 1 && (
+      {!panelOpen && photos.length > 1 && (
         <>
           <span className="absolute left-5 top-5 z-[15] rounded-full border border-white/15 bg-[#000c1c]/55 px-3.5 py-1.5 text-xs tracking-wider backdrop-blur-md">
             {photoIndex + 1}/{photos.length}
@@ -491,18 +563,27 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: reducedMotion ? 0 : 60, opacity: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-y-0 right-0 z-20 w-full max-w-md overflow-y-auto border-l border-white/10 bg-[#001b3d]/85 p-8 backdrop-blur-2xl"
+            className="fixed inset-y-0 right-0 z-[500] w-full max-w-md overflow-y-auto border-l border-white/10 bg-[#001b3d]/95 p-6 sm:p-8 backdrop-blur-2xl"
             role="dialog"
             aria-label="Statistiques et palmarès"
           >
-            <button
-              type="button"
-              onClick={() => setPanelOpen(false)}
-              aria-label="Fermer"
-              className="absolute right-5 top-5 rounded-full border border-white/10 px-3 py-1.5 text-sm text-text-muted transition hover:border-accent/50 hover:text-text-main"
-            >
-              ✕
-            </button>
+            {/* Header du panneau avec titre et bouton fermer */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📊</span>
+                <h3 className="font-display text-lg font-bold text-text-main">
+                  Statistiques &amp; Palmarès
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPanelOpen(false)}
+                aria-label="Fermer"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-sm font-bold text-white backdrop-blur-md transition hover:bg-black/80 hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
             {data.stats.length > 0 && (
               <div className="mt-8 grid grid-cols-2 gap-3">
@@ -557,10 +638,28 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
                       className="font-body flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2.5 text-sm"
                     >
                       <span>{item.icon}</span>
-                      <span className="text-text-main">{item.name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-text-main">{item.name}</span>
+                        {item.detail && <span className="text-xs text-text-muted">{item.detail}</span>}
+                      </div>
                       <span className="ml-auto font-semibold text-gold">{item.count}</span>
                     </div>
                   ))}
+                </div>
+              </>
+            )}
+
+            {cv.showSections?.videos !== false && cv.videos && cv.videos.length > 0 && (
+              <>
+                <h4 className="font-display mt-8 text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">
+                  Vidéos
+                </h4>
+                <div className="space-y-4">
+                  {cv.videos.map((vid, i) => {
+                    const videoUrl = vid.url || (vid.title?.startsWith('http') || vid.title?.includes('youtu') || vid.title?.includes('vimeo') ? vid.title : '');
+                    const videoTitle = videoUrl === vid.title ? '' : vid.title;
+                    return videoUrl ? <PlayerVideo key={i} src={videoUrl} title={videoTitle} /> : null;
+                  })}
                 </div>
               </>
             )}

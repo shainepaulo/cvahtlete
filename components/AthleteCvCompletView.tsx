@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { CvData } from '@/app/actions/cv'
 import { BlurValue } from '@/components/privacy/BlurValue'
+import { PlayerVideo } from '@/components/PlayerVideo'
 import './noa/complet/cv-complet.css'
 
 interface Props {
@@ -89,18 +90,13 @@ export function AthleteCvCompletView({ cv, backHref, cvSlug, adminForceMask, isA
 
   const rawStats = (cv.stats || []) as Array<{ label: string; value: string; unit?: string }>
   const rawCareer = (cv.career || []) as Array<{ year: string; club: string; detail?: string }>
-  const rawPalmares = (cv.palmares || []) as Array<{ icon: string; name: string; count: string }>
+  const rawPalmares = (cv.palmares || []) as Array<{ icon: string; name: string; count: string; detail?: string }>
 
-  // Compétences clés basées sur les statistiques (stats)
-  const skills = rawStats.map((s) => {
-    const numValue = parseFloat(String(s.value).replace(/[^\d]/g, ''))
-    const validPercent = !isNaN(numValue) && numValue > 0 && numValue <= 100 ? numValue : 85
-    return {
-      name: s.label || 'Compétence',
-      value: validPercent,
-      display: s.value + (s.unit || '')
-    }
-  })
+  // Statistiques
+  const stats = rawStats.map((s) => ({
+    name: s.label || 'Statistique',
+    display: s.value + (s.unit || '')
+  }))
 
   // Parcours (timeline)
   const timeline = rawCareer.map((c) => ({
@@ -113,7 +109,8 @@ export function AthleteCvCompletView({ cv, backHref, cvSlug, adminForceMask, isA
   const palmares = rawPalmares.map((p) => ({
     icon: p.icon || '🏆',
     name: p.name || 'Titre',
-    year: p.count || ''
+    year: p.count || '',
+    detail: p.detail || ''
   }))
 
   // Coordonnées de contact
@@ -135,6 +132,59 @@ export function AthleteCvCompletView({ cv, backHref, cvSlug, adminForceMask, isA
           Retour
         </Link>
         <span className="nav-title">CV Joueur</span>
+        <div className="nav-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="action-btn print"
+            onClick={() => window.print()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '20px',
+              border: '1px solid var(--psg-blue, #001f54)',
+              background: 'var(--psg-blue, #001f54)',
+              color: '#fff',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
+            </svg>
+            <span>Imprimer</span>
+          </button>
+          <button
+            type="button"
+            className="action-btn share"
+            onClick={share}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '20px',
+              border: '1px solid rgba(0,0,0,0.15)',
+              background: '#fff',
+              color: 'var(--psg-blue, #001f54)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            <span className="hide-mobile-text">Partager</span>
+          </button>
+        </div>
       </nav>
 
       {cv.cinematic && (
@@ -264,18 +314,16 @@ export function AthleteCvCompletView({ cv, backHref, cvSlug, adminForceMask, isA
           </div>
 
           <div className="cv-column right" ref={skillsRef}>
-            {skills.length > 0 && (
+            {stats.length > 0 && (
               <section className="cv-section">
                 <h2 className="section-title">
-                  <span className="title-icon">⭐</span> Compétences clés
+                  <span className="title-icon">📊</span> Statistiques
                 </h2>
                 <div className="skills-grid">
-                  {skills.map((s, idx) => (
+                  {stats.map((s, idx) => (
                     <div key={idx} className="skill-item">
                       <span className="skill-name">{s.name}</span>
-                      <div className="skill-bar">
-                        <div className="skill-fill" style={{ '--width': `${s.value}%` } as React.CSSProperties} />
-                      </div>
+                      <div style={{ flex: 1, borderBottom: '1px dotted var(--gray-light, #ddd)', margin: '0 4px', height: '1px', alignSelf: 'center' }} />
                       <span className="skill-value">{s.display}</span>
                     </div>
                   ))}
@@ -311,13 +359,17 @@ export function AthleteCvCompletView({ cv, backHref, cvSlug, adminForceMask, isA
                   {palmares.map((t, idx) => (
                     <div key={idx} className="trophy-row">
                       <span className="trophy-icon">{t.icon}</span>
-                      <span className="trophy-name">{t.name}</span>
+                      <div className="trophy-info" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <span className="trophy-name">{t.name}</span>
+                        {t.detail && <span className="trophy-detail" style={{ fontSize: '0.75rem', opacity: 0.75, marginTop: 2 }}>{t.detail}</span>}
+                      </div>
                       <span className="trophy-year">{t.year}</span>
                     </div>
                   ))}
                 </div>
               </section>
             )}
+
           </div>
         </div>
 

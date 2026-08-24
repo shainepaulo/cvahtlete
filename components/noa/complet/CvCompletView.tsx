@@ -83,6 +83,59 @@ export function CvCompletView({ profile, backHref, cvSlug, adminForceMask, isAdm
           Retour
         </Link>
         <span className="nav-title">CV Joueur</span>
+        <div className="nav-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="action-btn print"
+            onClick={() => window.print()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '20px',
+              border: '1px solid var(--psg-blue, #001f54)',
+              background: 'var(--psg-blue, #001f54)',
+              color: '#fff',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z" />
+            </svg>
+            <span>Imprimer</span>
+          </button>
+          <button
+            type="button"
+            className="action-btn share"
+            onClick={share}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '20px',
+              border: '1px solid rgba(0,0,0,0.15)',
+              background: '#fff',
+              color: 'var(--psg-blue, #001f54)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            <span className="hide-mobile-text">Partager</span>
+          </button>
+        </div>
       </nav>
 
       <main className="cv-container">

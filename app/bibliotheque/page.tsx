@@ -80,8 +80,10 @@ export default async function BibliothequePage() {
                 <span className="lib-card-emoji" style={{ fontSize: '1.5rem', marginBottom: 12, display: 'block' }}>{cv.emoji || '🏅'}</span>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '6px 0' }}>{cv.first} {cv.last}</h3>
                 <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-                  ⚽ {cv.sport}
+                  {cv.emoji} {cv.sport}
+                  {cv.discipline && ` · ${cv.discipline}`}
                   {cv.location && ` · ${cv.location}`}
+                  {cv.tagline && ` · ${cv.tagline}`}
                 </p>
               </Link>
             ))}

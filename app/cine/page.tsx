@@ -87,11 +87,19 @@ function CineContent() {
         if (!data) { setError('CV introuvable ou accès refusé'); return }
         setTagline(data.tagline || '')
         setCv(data)
-        // Photo cinématique du builder (cine_bg_url) : galerie d'une image
+        // Photo cinématique du builder (cine_bg_url) : galerie d'une image ou plusieurs
         setGallery(
-          data.cineBg
-            ? [{ src: data.cineBg, alt: `${data.first} ${data.last}`, position: `${data.cineBgPosX ?? 50}% ${data.cineBgPosY ?? 50}%` }]
-            : [],
+          data.cineImages && data.cineImages.length > 0
+            ? data.cineImages.map((img) => ({
+                src: img.url,
+                alt: `${data.first} ${data.last}`,
+                posX: img.posX ?? 50,
+                posY: img.posY ?? 50,
+                zoom: img.zoom ?? 1.25,
+              }))
+            : (data.cineBg
+                ? [{ src: data.cineBg, alt: `${data.first} ${data.last}`, posX: data.cineBgPosX ?? 50, posY: data.cineBgPosY ?? 50, zoom: data.cropZoomCineBg ?? 1.25 }]
+                : [])
         )
         setCinematic(!!(data.cinematic))
       })

@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getMyProfile } from '@/app/actions/auth'
 import { getMyCv, upsertCv } from '@/app/actions/cv'
-import { uploadImage } from '@/app/actions/upload'
+import { uploadImage, uploadVideo } from '@/app/actions/upload'
 
 export const PLAN_LABEL: Record<string, string> = {
   free: 'Gratuit', starter: 'Starter (Legacy)', pro: 'Pro (Legacy)', season: 'Pass Saison Pro', club: 'Club',
@@ -46,7 +46,7 @@ export const COLOR_PRESETS: Array<{ name: string; a: string; b: string }> = [
 /** Bornes strictes des champs : rien ne déborde, ni visuellement ni en donnée. */
 export const LIMITS = {
   name: 40, discipline: 40, tagline: 120, bio: 600, location: 60, url: 200,
-  rowText: 60, rowShort: 14,
+  rowText: 250, rowShort: 14,
 } as const
 
 export interface Row { [k: string]: string }
@@ -63,8 +63,9 @@ export interface BuilderUser {
 export const ROWDEF: Record<string, [string, string][]> = {
   characteristics: [['name', 'Libellé'], ['value', 'Valeur']],
   stats:    [['label', 'Libellé'], ['value', 'Valeur'], ['unit', 'Unité']],
-  palmares: [['icon', '🏆'], ['name', 'Titre'], ['count', '×']],
+  palmares: [['icon', '🏆'], ['name', 'Titre'], ['count', 'Année/×'], ['detail', 'Détail']],
   career:   [['year', 'Année'], ['club', 'Étape'], ['detail', 'Détail']],
+  videos:   [['title', 'Titre de la vidéo'], ['url', 'Lien vidéo (URL / MP4)']],
 }
 
 const MAX_ROWS = 12
@@ -74,7 +75,7 @@ export function cropTf(x = 50, y = 50, z = 1.4) {
   return `translate(${(m * (1 - x / 50)).toFixed(2)}%,${(m * (1 - y / 50)).toFixed(2)}%) scale(${z})`
 }
 
-export type RowSection = 'characteristics' | 'stats' | 'palmares' | 'career'
+export type RowSection = 'characteristics' | 'stats' | 'palmares' | 'career' | 'videos'
 
 /** Lignes dynamiques bornées (12 max) — libellés et valeurs à longueur limitée. */
 export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[]; onChange: (rows: Row[]) => void }) {
@@ -85,6 +86,79 @@ export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[
   function add() {
     if (rows.length >= MAX_ROWS) return
     const e: Row = {}; ROWDEF[kind].forEach(([k]) => e[k] = ''); onChange([...rows, e])
+  }
+
+  if (kind === 'videos') {
+    return (
+      <>
+        <div className="stat-rows" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {rows.map((row, i) => {
+            const rawUrl = (row.url || '').trim();
+            const rawTitle = (row.title || '').trim();
+            const isUrlValid = Boolean(rawUrl || rawTitle.startsWith('http') || rawTitle.includes('youtu') || rawTitle.includes('vimeo'));
+
+            return (
+              <div key={i} className="stat-row videos-row" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                padding: '12px 14px',
+                borderRadius: 10,
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: isUrlValid ? '1px solid rgba(121, 224, 207, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
+                transition: 'border-color 0.2s ease'
+              }}>
+                {/* Ligne 1 : URL / Lien vidéo + Uploader MP4 + Supprimer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', flexWrap: 'wrap' }}>
+                  <input
+                    className="mini"
+                    type="url"
+                    inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="Coller le lien (YouTube, Vimeo, MP4...)"
+                    value={row.url || ''}
+                    maxLength={LIMITS.url}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      update(i, 'url', val);
+                    }}
+                    style={{ flex: 1, minWidth: '200px' }}
+                  />
+                  <VideoUploadButton onUploadSuccess={(url) => update(i, 'url', url)} />
+                  <button type="button" className="icon-btn" title="Supprimer la vidéo" onClick={() => remove(i)}>✕</button>
+                </div>
+
+                {/* Ligne 2 : Titre de la vidéo (Optionnel) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                  <input
+                    className="mini"
+                    placeholder="Titre de la vidéo (ex: Highlights 2025/2026)"
+                    value={row.title || ''}
+                    maxLength={LIMITS.rowText}
+                    onChange={(e) => update(i, 'title', e.target.value)}
+                    style={{ flex: 1, width: '100%' }}
+                  />
+                </div>
+
+                {/* Badge visuel de validation */}
+                {isUrlValid && (
+                  <div style={{ fontSize: '0.75rem', color: '#79e0cf', display: 'flex', alignItems: 'center', gap: 4, marginTop: -2 }}>
+                    <span>✓ Lien vidéo prêt et valide</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <button type="button" className="btn btn-ghost" onClick={add}
+          disabled={rows.length >= MAX_ROWS}
+          style={{ padding: '8px 16px', marginTop: 8, opacity: rows.length >= MAX_ROWS ? 0.5 : 1 }}>
+          + Ajouter une vidéo {rows.length >= MAX_ROWS && `(max ${MAX_ROWS})`}
+        </button>
+      </>
+    );
   }
 
   return (
@@ -115,13 +189,65 @@ export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[
   )
 }
 
+function VideoUploadButton({ onUploadSuccess }: { onUploadSuccess: (url: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 150 * 1024 * 1024) {
+      alert("La vidéo dépasse la limite de 150 Mo. Pour des séquences plus longues, privilégie un lien YouTube ou Vimeo.")
+      return
+    }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('video', file)
+      const res = await uploadVideo(fd)
+      if ('error' in res) {
+        alert(res.error)
+      } else if (res.url) {
+        onUploadSuccess(res.url)
+      }
+    } catch {
+      alert("Erreur lors de l'envoi de la vidéo.")
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+      <button
+        type="button"
+        className="btn btn-ghost"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        style={{ padding: '6px 10px', fontSize: '0.75rem', whiteSpace: 'nowrap', borderRadius: 6, border: '1px solid var(--border)' }}
+      >
+        {uploading ? '⏳ Envoi...' : '📁 Importer MP4 (150 Mo max)'}
+      </button>
+    </>
+  )
+}
+
+/** Upload + recadrage par glisser (position) et zoom borné [1 ; 2]. */
 /** Upload + recadrage par glisser (position) et zoom borné [1 ; 2]. */
 export function CropBox({
-  label, hint, src, posX, posY, zoom, circle,
+  label, hint, src, posX, posY, zoom, circle, targetUserId,
   onPosChange, onZoomChange, onFile,
 }: {
   label: string; hint: string
-  src: string; posX: number; posY: number; zoom: number; circle?: boolean
+  src: string; posX: number; posY: number; zoom: number; circle?: boolean; targetUserId?: string
   onPosChange: (x: number, y: number) => void
   onZoomChange: (z: number) => void
   onFile: (url: string) => void
@@ -139,7 +265,11 @@ export function CropBox({
       return
     }
     setUploading(true); setUploadErr('')
-    const fd = new FormData(); fd.append('image', file)
+    const fd = new FormData()
+    fd.append('image', file)
+    if (targetUserId) {
+      fd.append('targetUserId', targetUserId)
+    }
     const result = await uploadImage(fd)
     setUploading(false)
     if ('error' in result) { setUploadErr(result.error); return }
@@ -187,6 +317,34 @@ export function CropBox({
         <span className="crop-zoom-val">{zoom.toFixed(2)}×</span>
         <button type="button" className="crop-zoom-btn" onClick={() => adjustZoom(0.1)}>+</button>
       </div>
+      {src && (
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginTop: 10, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--muted)' }}>
+            <span>Axe X :</span>
+            <input 
+              type="number" 
+              min="0" 
+              max="100" 
+              value={posX} 
+              onChange={(e) => onPosChange(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)), posY)}
+              style={{ width: 55, background: 'var(--bg-2, #0d1527)', border: '1px solid var(--border, rgba(255, 255, 255, 0.08))', color: '#fff', borderRadius: 6, padding: '4px 6px', textAlign: 'center', outline: 'none' }}
+            />
+            <span>%</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--muted)' }}>
+            <span>Axe Y :</span>
+            <input 
+              type="number" 
+              min="0" 
+              max="100" 
+              value={posY} 
+              onChange={(e) => onPosChange(posX, Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+              style={{ width: 55, background: 'var(--bg-2, #0d1527)', border: '1px solid var(--border, rgba(255, 255, 255, 0.08))', color: '#fff', borderRadius: 6, padding: '4px 6px', textAlign: 'center', outline: 'none' }}
+            />
+            <span>%</span>
+          </div>
+        </div>
+      )}
       <div className="crop-hint">✛ Glisse l&apos;image pour cadrer</div>
     </div>
   )
@@ -236,9 +394,11 @@ export function useCvBuilder(nextPath: string) {
   const [cineBgPosX, setCineBgPosX] = useState(50)
   const [cineBgPosY, setCineBgPosY] = useState(50)
   const [cropZoomCineBg, setCropZoomCineBg] = useState(1.25)
+  const [cineImages, setCineImages] = useState<Array<{ url: string; posX: number; posY: number; zoom: number }>>([])
   const [stats, setStats] = useState<Row[]>([{ label: '', value: '', unit: '' }])
-  const [palmares, setPalmares] = useState<Row[]>([{ icon: '🏆', name: '', count: '' }])
+  const [palmares, setPalmares] = useState<Row[]>([{ icon: '🏆', name: '', count: '', detail: '' }])
   const [career, setCareer] = useState<Row[]>([{ year: '', club: '', detail: '' }])
+  const [videos, setVideos] = useState<Row[]>([{ title: '', url: '' }])
   const [characteristics, setCharacteristics] = useState<Row[]>([
     { name: 'Nationalité', value: '' },
     { name: 'Né le', value: '' },
@@ -294,9 +454,25 @@ export function useCvBuilder(nextPath: string) {
       setCineBgPosX(cv.cineBgPosX ?? 50)
       setCineBgPosY(cv.cineBgPosY ?? 50)
       setCropZoomCineBg(cv.cropZoomCineBg ?? 1.25)
+
+      let initialImages = cv.cineImages ?? []
+      if (initialImages.length === 0 && cv.cineBg) {
+        initialImages = [{
+          url: cv.cineBg,
+          posX: cv.cineBgPosX ?? 50,
+          posY: cv.cineBgPosY ?? 50,
+          zoom: cv.cropZoomCineBg ?? 1.25
+        }]
+      }
+      setCineImages(initialImages)
       if ((cv.stats as Row[])?.length) setStats(cv.stats as Row[])
       if ((cv.palmares as Row[])?.length) setPalmares(cv.palmares as Row[])
-      if ((cv.career as Row[])?.length) setCareer(cv.career as Row[])
+      const loadedVideos = (Array.isArray(cv.videos) && (cv.videos as Row[]).length > 0)
+        ? (cv.videos as Row[])
+        : (cv.showSections && typeof cv.showSections === 'object' && Array.isArray((cv.showSections as Record<string, unknown>)._videos) && ((cv.showSections as Record<string, unknown>)._videos as Row[]).length > 0
+            ? ((cv.showSections as Record<string, unknown>)._videos as Row[])
+            : []);
+      if (loadedVideos.length > 0) setVideos(loadedVideos);
       const lks = (cv.links as Array<{ label: string; icon: string; url: string }> | undefined) ?? []
       setInstagram(lks.find((l) => l.icon === 'instagram')?.url || '')
       setXUrl(lks.find((l) => l.icon === 'x')?.url || '')
@@ -341,6 +517,7 @@ export function useCvBuilder(nextPath: string) {
     stats: stats.filter((r) => Object.values(r).some((v) => v?.trim())),
     palmares: palmares.filter((r) => Object.values(r).some((v) => v?.trim())),
     career: career.filter((r) => Object.values(r).some((v) => v?.trim())),
+    videos: videos.filter((r) => Object.values(r).some((v) => v?.trim())),
     links: [
       instagram && { label: 'Instagram', icon: 'instagram', url: instagram },
       xUrl && { label: 'X', icon: 'x', url: xUrl },
@@ -356,7 +533,8 @@ export function useCvBuilder(nextPath: string) {
     contactEmail: contactEmail || undefined,
   }), [first, last, sport, discipline, tagline, bio, location, avatar,
        photoPosX, photoPosY, cropZoomAvatar, cineBg, cineBgPosX, cineBgPosY, cropZoomCineBg,
-       colorA, colorB, stats, palmares, career, instagram, xUrl, visibility, user?.cv?.slug,
+       cineImages,
+       colorA, colorB, stats, palmares, career, videos, instagram, xUrl, visibility, user?.cv?.slug,
        characteristics, showCharacteristics, showSections,
        birthDate, nationality, eligibility, contactPhone, contactEmail])
 
@@ -372,9 +550,11 @@ export function useCvBuilder(nextPath: string) {
       colors: { a: colorA, b: colorB },
       avatar: avatar || undefined, photoPosX, photoPosY, cropZoomAvatar,
       cineBg: cineBg || undefined, cineBgPosX, cineBgPosY, cropZoomCineBg,
+      cineImages,
       stats: stats.filter((r) => Object.values(r).some((v) => v?.trim())),
       palmares: palmares.filter((r) => Object.values(r).some((v) => v?.trim())),
       career: career.filter((r) => Object.values(r).some((v) => v?.trim())),
+      videos: videos.filter((r) => Object.values(r).some((v) => v?.trim())) as Array<{ title: string; url: string }>,
       links: [
         instagram && { label: 'Instagram', icon: 'instagram', url: instagram },
         xUrl && { label: 'X', icon: 'x', url: xUrl },
@@ -411,7 +591,8 @@ export function useCvBuilder(nextPath: string) {
     cropZoomAvatar, setCropZoomAvatar,
     cineBg, setCineBg, cineBgPosX, setCineBgPosX, cineBgPosY, setCineBgPosY,
     cropZoomCineBg, setCropZoomCineBg,
-    stats, setStats, palmares, setPalmares, career, setCareer,
+    cineImages, setCineImages,
+    stats, setStats, palmares, setPalmares, career, setCareer, videos, setVideos,
     characteristics, setCharacteristics, showCharacteristics, setShowCharacteristics,
     targetUserId, cvId, showSections, setShowSections,
     birthDate, setBirthDate, nationality, setNationality, eligibility, setEligibility,

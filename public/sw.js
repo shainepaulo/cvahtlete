@@ -1,16 +1,6 @@
-const CACHE_NAME = 'athlete-cv-cache-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/icon.svg',
-  '/favicon.ico'
-];
+const CACHE_NAME = 'athlete-cv-cache-v2';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
-    })
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -18,11 +8,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
-        })
+        cacheNames.map((cache) => caches.delete(cache))
       );
     })
   );
@@ -30,22 +16,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes externes (comme Supabase, Stripe)
-  if (!event.request.url.startsWith(self.location.origin)) {
+  // Ignorer absolument toutes les requêtes POST, PUT, DELETE (les Server Actions Next.js)
+  if (event.request.method !== 'GET') {
     return;
   }
 
-  // Ignorer les requêtes API/admin
-  if (event.request.url.includes('/api/') || event.request.url.includes('/admin')) {
+  // Ignorer Next.js internal, API, admin, Supabase
+  const url = event.request.url;
+  if (
+    !url.startsWith(self.location.origin) ||
+    url.includes('/_next/') ||
+    url.includes('/api/') ||
+    url.includes('/admin') ||
+    url.includes('supabase')
+  ) {
     return;
   }
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request);
-    })
-  );
 });

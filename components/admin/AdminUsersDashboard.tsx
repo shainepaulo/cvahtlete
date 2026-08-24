@@ -11,6 +11,7 @@ import {
   setCinematicEnabled,
   toggleAdminContactMask
 } from '@/app/actions/admin'
+import DeleteCvButton from '@/components/DeleteCvButton'
 
 type AccountStatus = 'active' | 'suspended' | 'revoked'
 
@@ -279,6 +280,9 @@ function UserCard({ row, currentEmail }: { row: AdminUserRow; currentEmail: stri
                     <a href={`/builder/cinematique?u=${row.id}&cv=${cv.id}`} className="mini-btn" style={{ background: 'rgba(234, 179, 8, 0.08)', color: 'var(--gold)', textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' }}>
                       🎬 Éditer cinématique
                     </a>
+                    {canManage && (
+                      <DeleteCvButton cvId={cv.id} label={`${cv.first} ${cv.last}`} />
+                    )}
                   </div>
                 </div>
               ))}
@@ -289,7 +293,7 @@ function UserCard({ row, currentEmail }: { row: AdminUserRow; currentEmail: stri
             <span style={{ color: 'var(--muted-2)', fontSize: '0.8rem', fontStyle: 'italic' }}>Aucun CV créé</span>
           )}
 
-          {canManage && (row.plan === 'club' || row.is_owner || row.is_super_admin) && (
+          {canManage && (
             <a
               href={`/builder/classique?u=${row.id}`}
               className="mini-btn"

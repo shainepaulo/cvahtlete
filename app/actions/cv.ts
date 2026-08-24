@@ -29,10 +29,12 @@ export interface CvData {
   cineBgPosX?: number;
   cineBgPosY?: number;
   cropZoomCineBg?: number;
+  cineImages?: Array<{ url: string; posX: number; posY: number; zoom: number }>;
   cinematic?: boolean;
   stats?: unknown[];
   palmares?: unknown[];
   career?: unknown[];
+  videos?: Array<{ title: string; url: string }>;
   links?: unknown[];
   visibility?: string;
   blocked?: boolean;
@@ -83,10 +85,19 @@ function rowToCv(row: Record<string, unknown>): CvData {
     cineBgPosX: (row.cine_bg_pos_x as number) ?? 50,
     cineBgPosY: (row.cine_bg_pos_y as number) ?? 50,
     cropZoomCineBg: Number(row.crop_zoom_cine_bg ?? 1.25),
+    cineImages: (row.cine_images as Array<{ url: string; posX: number; posY: number; zoom: number }>) ?? [],
     cinematic: !!(row.cinematic_enabled),
     stats: (row.stats as unknown[]) ?? [],
     palmares: (row.palmares as unknown[]) ?? [],
     career: (row.career as unknown[]) ?? [],
+    // Normalisation des vidéos avec fallback automatique si la colonne videos n'existe pas en BDD
+    videos: (
+      Array.isArray(row.videos) && (row.videos as unknown[]).length > 0
+        ? (row.videos as Array<{ title: string; url: string }>)
+        : (row.show_sections && typeof row.show_sections === 'object' && Array.isArray((row.show_sections as Record<string, unknown>)._videos)
+            ? ((row.show_sections as Record<string, unknown>)._videos as Array<{ title: string; url: string }>)
+            : [])
+    ),
     links: normalizePublicLinks(row.links),
     visibility: String(row.visibility ?? "private"),
     characteristics: (row.characteristics as Array<{ name: string; value: string }>) ?? [],
@@ -131,9 +142,11 @@ export interface UpsertCvInput {
   cineBgPosX?: number;
   cineBgPosY?: number;
   cropZoomCineBg?: number;
+  cineImages?: Array<{ url: string; posX: number; posY: number; zoom: number }>;
   stats?: unknown[];
   palmares?: unknown[];
   career?: unknown[];
+  videos?: Array<{ title: string; url: string }>;
   links?: unknown[];
   visibility?: "private" | "public";
   characteristics?: Array<{ name: string; value: string }>;
@@ -203,6 +216,7 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     ["stats", input.stats ?? []],
     ["palmares", input.palmares ?? []],
     ["career", input.career ?? []],
+    ["videos", input.videos ?? []],
     ["links", input.links ?? []],
   ] as const) {
     if (!isSafeJson(val)) return { error: `Données « ${field} » invalides ou trop volumineuses.` };
@@ -292,28 +306,50 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
         (targetProfile?.plan === "season" && !isSeasonExpired)
       );
 
+  const cineImages = input.cineImages ?? [];
+  const firstImage = cineImages[0] ?? null;
+  const cineBgUrl = firstImage ? firstImage.url : (input.cineBg || null);
+  const cineBgPosX = firstImage ? firstImage.posX : (input.cineBgPosX ?? 50);
+  const cineBgPosY = firstImage ? firstImage.posY : (input.cineBgPosY ?? 50);
+  const cropZoomCineBg = firstImage ? firstImage.zoom : (input.cropZoomCineBg ?? 1.25);
+
+  const cleanedVideos = (input.videos ?? []).map((v) => {
+    const url = (v.url || '').trim();
+    const title = (v.title || '').trim();
+    const videoUrl = url || (title.startsWith('http') || title.includes('youtu') || title.includes('vimeo') ? title : '');
+    const videoTitle = videoUrl === title ? '' : title;
+    return videoUrl ? { title: videoTitle, url: videoUrl } : null;
+  }).filter(Boolean) as Array<{ title: string; url: string }>;
+
+  const showSectionsPayload = {
+    ...(input.showSections ?? { stats: true, palmares: true, career: true, bio: true, videos: true }),
+    _videos: cleanedVideos
+  };
+
   const row = {
     user_id: userIdToUpsert,
     slug,
     first,
     last,
     label: `${first} ${last}`,
-    sport: input.sport.slice(0, 40),
+    sport: input.sport.trim().slice(0, 60),
     discipline: (input.discipline ?? "").slice(0, 60),
     location: (input.location ?? "").slice(0, 80),
     tagline: (input.tagline ?? "").slice(0, 160),
     bio: (input.bio ?? "").slice(0, 2000),
     avatar_url: input.avatar || null,
-    cine_bg_url: input.cineBg || null,
+    cine_bg_url: cineBgUrl,
     photo_pos_x: input.photoPosX ?? 50,
     photo_pos_y: input.photoPosY ?? 50,
     crop_zoom_avatar: input.cropZoomAvatar ?? 1.4,
-    cine_bg_pos_x: input.cineBgPosX ?? 50,
-    cine_bg_pos_y: input.cineBgPosY ?? 50,
-    crop_zoom_cine_bg: input.cropZoomCineBg ?? 1.25,
+    cine_bg_pos_x: cineBgPosX,
+    cine_bg_pos_y: cineBgPosY,
+    crop_zoom_cine_bg: cropZoomCineBg,
+    cine_images: cineImages,
     stats: input.stats ?? [],
     palmares: input.palmares ?? [],
     career: input.career ?? [],
+    videos: cleanedVideos,
     links,
     colors: input.colors ?? { a: "#8bb6ff", b: "#79e0cf" },
     visibility: input.visibility ?? "private",
@@ -329,10 +365,22 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
   };
 
   if (existing) {
-    const { error } = await supabase.from("cvs").update(row).eq("id", existing.id);
+    let { error } = await supabase.from("cvs").update(row).eq("id", existing.id);
+    if (error && error.code === "PGRST204" && "videos" in row) {
+      const rowWithoutVideos = { ...row };
+      delete (rowWithoutVideos as { videos?: unknown }).videos;
+      const retry = await supabase.from("cvs").update(rowWithoutVideos).eq("id", existing.id);
+      error = retry.error;
+    }
     if (error) return { error: `Erreur lors de la sauvegarde : ${error.message} (${error.code})` };
   } else {
-    const { error } = await supabase.from("cvs").insert(row);
+    let { error } = await supabase.from("cvs").insert(row);
+    if (error && error.code === "PGRST204" && "videos" in row) {
+      const rowWithoutVideos = { ...row };
+      delete (rowWithoutVideos as { videos?: unknown }).videos;
+      const retry = await supabase.from("cvs").insert(rowWithoutVideos);
+      error = retry.error;
+    }
     if (error) {
       if (error.code === "23505") {
         return { error: "Slug déjà pris — réessaie ou modifie le slug manuellement." };
@@ -520,6 +568,7 @@ export interface PublicCvSummary {
   last: string;
   sport: string;
   emoji: string;
+  discipline?: string;
   tagline?: string;
   location?: string;
   avatar?: string;
@@ -530,7 +579,7 @@ export async function listPublicCvs(): Promise<PublicCvSummary[]> {
   const supabase = createClient();
   const { data } = await supabase
     .from("cvs")
-    .select("slug, first, last, sport, tagline, location, avatar_url, created_at")
+    .select("slug, first, last, sport, discipline, tagline, location, avatar_url, created_at")
     .eq("visibility", "public")
     .order("created_at", { ascending: false });
 
@@ -540,6 +589,7 @@ export async function listPublicCvs(): Promise<PublicCvSummary[]> {
     last: String(row.last ?? ""),
     sport: String(row.sport ?? ""),
     emoji: EMOJI[String(row.sport)] ?? "🏅",
+    discipline: (row.discipline as string) || undefined,
     tagline: (row.tagline as string) || undefined,
     location: (row.location as string) || undefined,
     avatar: (row.avatar_url as string) || undefined,

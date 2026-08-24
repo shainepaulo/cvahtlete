@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import {
   useCvBuilder, DynRows, CropBox, CharCount,
   SPORTS, COLOR_PRESETS, LIMITS,
@@ -59,6 +60,9 @@ function ClassiqueContent() {
   const isPresetDiscipline = presetOptions && presetOptions.includes(b.discipline)
   const disciplineSelectValue = isPresetDiscipline ? b.discipline : 'Autre'
 
+  const searchParams = useSearchParams()
+  const initialMode = searchParams.get('mode') === 'cine' ? 'cine' : 'classic'
+  const [previewMode, setPreviewMode] = useState<'classic' | 'cine'>(initialMode)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
@@ -295,9 +299,121 @@ function ClassiqueContent() {
               </div>
               <CropBox label="Photo de profil" hint="Aucune photo" circle
                 src={b.avatar} posX={b.photoPosX} posY={b.photoPosY} zoom={b.cropZoomAvatar}
+                targetUserId={b.targetUserId}
                 onPosChange={(x, y) => { b.setPhotoPosX(x); b.setPhotoPosY(y) }}
                 onZoomChange={b.setCropZoomAvatar} onFile={b.setAvatar}
               />
+            </div>
+
+            {/* Sub-section : Images de fond pour le mode cinématique */}
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px dashed var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.2rem' }}>🎬</span>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--gold)' }}>
+                    Images de fond (Mode Cinématique)
+                  </h4>
+                </div>
+                {hasPro && (
+                  <span style={{ fontSize: '0.72rem', background: 'rgba(255,217,138,0.15)', color: 'var(--gold)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                    Inclus dans ton offre
+                  </span>
+                )}
+              </div>
+              <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginBottom: 16 }}>
+                Ajoute jusqu&apos;à 8 photos grand format qui serviront d&apos;arrière-plan immersif en mode Cinématique.
+              </p>
+
+              <div style={{ display: 'grid', gap: 20 }}>
+                {b.cineImages.length === 0 && (
+                  <CropBox 
+                    label="Image de fond #1" 
+                    hint="Sélectionne ou glisse une image de fond"
+                    src={b.cineBg || ''} 
+                    posX={b.cineBgPosX} 
+                    posY={b.cineBgPosY} 
+                    zoom={b.cropZoomCineBg}
+                    targetUserId={b.targetUserId}
+                    onPosChange={(x, y) => { b.setCineBgPosX(x); b.setCineBgPosY(y); }}
+                    onZoomChange={b.setCropZoomCineBg}
+                    onFile={(url) => {
+                      b.setCineBg(url);
+                      b.setCineImages([{ url, posX: b.cineBgPosX, posY: b.cineBgPosY, zoom: b.cropZoomCineBg }]);
+                    }}
+                  />
+                )}
+
+                {b.cineImages.map((img, idx) => (
+                  <div key={idx} style={{ 
+                    borderBottom: idx < b.cineImages.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', 
+                    paddingBottom: idx < b.cineImages.length - 1 ? 16 : 0, 
+                    display: 'grid', 
+                    gap: 10 
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gold)' }}>
+                        Image de fond #{idx + 1}
+                      </span>
+                      {b.cineImages.length > 1 && (
+                        <button 
+                          type="button" 
+                          className="btn btn-ghost"
+                          style={{ color: '#ff4d4f', padding: '2px 8px', fontSize: '0.72rem', height: 'auto' }}
+                          onClick={() => {
+                            const copy = b.cineImages.filter((_, i) => i !== idx);
+                            b.setCineImages(copy);
+                          }} 
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+
+                    <CropBox 
+                      label="" 
+                      hint="Sélectionne ou glisse une image de fond"
+                      src={img.url} 
+                      posX={img.posX ?? 50} 
+                      posY={img.posY ?? 50} 
+                      zoom={img.zoom ?? 1.25}
+                      targetUserId={b.targetUserId}
+                      onPosChange={(x, y) => {
+                        const copy = [...b.cineImages];
+                        copy[idx] = { ...copy[idx], posX: x, posY: y };
+                        b.setCineImages(copy);
+                        if (idx === 0) { b.setCineBgPosX(x); b.setCineBgPosY(y); }
+                      }}
+                      onZoomChange={(z) => {
+                        const copy = [...b.cineImages];
+                        copy[idx] = { ...copy[idx], zoom: z };
+                        b.setCineImages(copy);
+                        if (idx === 0) { b.setCropZoomCineBg(z); }
+                      }}
+                      onFile={(url) => {
+                        const copy = [...b.cineImages];
+                        copy[idx] = { ...copy[idx], url };
+                        b.setCineImages(copy);
+                        if (idx === 0) { b.setCineBg(url); }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {b.cineImages.length < 8 && (
+                <button 
+                  type="button" 
+                  className="btn btn-ghost" 
+                  style={{ marginTop: 14, width: '100%', border: '1px dashed var(--border)', fontSize: '0.8rem', padding: '8px' }}
+                  onClick={() => {
+                    const defaultImg = b.avatar || '';
+                    const copy = [...b.cineImages, { url: defaultImg, posX: 50, posY: 50, zoom: 1.25 }];
+                    b.setCineImages(copy);
+                  }}
+                >
+                  + Ajouter une image de fond (max 8)
+                </button>
+              )}
             </div>
           </div>
 
@@ -451,9 +567,38 @@ function ClassiqueContent() {
             )}
           </div>
 
-          {/* 7 — Réseaux */}
+          {/* 7 — Vidéos */}
           <div className="app-card b-card">
-            <div className="b-sec-head"><span className="b-sec-num">7</span><h3>Réseaux</h3></div>
+            <div className="b-sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="b-sec-num">7</span>
+                <h3>Vidéos de l&apos;athlète</h3>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--muted-2)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={b.showSections.videos !== false} 
+                  onChange={(e) => b.setShowSections({ ...b.showSections, videos: e.target.checked })} 
+                />
+                Activer
+              </label>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted-2)', marginBottom: 12 }}>
+              Ajoute les liens de tes vidéos phares (YouTube, Vimeo ou fichier MP4). Le son sera activé par défaut avec un contrôle d&apos;avancement rapide.
+            </p>
+            <div style={{ opacity: b.showSections.videos !== false ? 1 : 0.4, pointerEvents: b.showSections.videos !== false ? 'auto' : 'none' }}>
+              <DynRows kind="videos" rows={b.videos} onChange={b.setVideos} />
+            </div>
+            {b.showSections.videos === false && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--gold)', marginTop: 8, margin: 0 }}>
+                ⚠️ Cette rubrique sera masquée sur ton profil.
+              </p>
+            )}
+          </div>
+
+          {/* 8 — Réseaux */}
+          <div className="app-card b-card">
+            <div className="b-sec-head"><span className="b-sec-num">8</span><h3>Réseaux</h3></div>
             <div className="field">
               <label>Instagram (URL)</label>
               <input value={b.instagram} maxLength={LIMITS.url} onChange={(e) => b.setInstagram(e.target.value)} placeholder="https://instagram.com/…" />
@@ -464,10 +609,10 @@ function ClassiqueContent() {
             </div>
           </div>
 
-          {/* 8 — Coordonnées */}
+          {/* 9 — Coordonnées */}
           <div className="app-card b-card">
             <div className="b-sec-head">
-              <span className="b-sec-num">8</span>
+              <span className="b-sec-num">9</span>
               <h3>Coordonnées</h3>
             </div>
 
@@ -547,7 +692,40 @@ function ClassiqueContent() {
         {/* Aperçu en direct */}
         <div className="preview-box">
           <div className="pb-head">
-            <span>Aperçu en direct</span>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button 
+                type="button" 
+                onClick={() => setPreviewMode('classic')}
+                style={{ 
+                  fontSize: '0.75rem', 
+                  padding: '4px 10px', 
+                  borderRadius: 4, 
+                  background: previewMode === 'classic' ? 'var(--gold)' : 'rgba(255,255,255,0.08)', 
+                  color: previewMode === 'classic' ? '#000' : 'var(--text)', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  fontWeight: 600 
+                }}
+              >
+                📄 Classique
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setPreviewMode('cine')}
+                style={{ 
+                  fontSize: '0.75rem', 
+                  padding: '4px 10px', 
+                  borderRadius: 4, 
+                  background: previewMode === 'cine' ? 'var(--gold)' : 'rgba(255,255,255,0.08)', 
+                  color: previewMode === 'cine' ? '#000' : 'var(--text)', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  fontWeight: 600 
+                }}
+              >
+                🎬 Cinématique
+              </button>
+            </div>
             <div className="pb-sizes">
               <button type="button" className="active" title="Vue mobile"
                 onClick={(e) => { if (iframeRef.current) iframeRef.current.style.width = '390px'; document.querySelectorAll('.pb-sizes button').forEach((btn) => btn.classList.toggle('active', btn === e.currentTarget)) }}>📱</button>
@@ -556,7 +734,12 @@ function ClassiqueContent() {
             </div>
           </div>
           <div className="pb-frame">
-            <iframe ref={iframeRef} id="preview" src="/profil?preview=1" style={{ width: 390 }} />
+            <iframe 
+              ref={iframeRef} 
+              id="preview" 
+              src={previewMode === 'cine' ? (b.user?.cv?.slug ? `/cine?u=${b.user.cv.slug}` : '/cine?u=dembele') : '/profil?preview=1'} 
+              style={{ width: 390 }} 
+            />
           </div>
         </div>
       </div>
@@ -589,13 +772,20 @@ function ClassiqueContent() {
               <button type="button" className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={() => setShowImportModal(false)} disabled={importing}>
                 Annuler
               </button>
-              <button type="button" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.7rem', height: 'auto' }} onClick={handleImport} disabled={importing || !importUrl}>
-                {importing ? 'Importation...' : 'Importer'}
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Barre de sauvegarde fixe flottante en bas de l'écran (Sticky Save Bar Mobile) */}
+      <div className="b-floating-savebar">
+        <button type="button" className="btn btn-primary" onClick={b.save} disabled={b.saving} style={{ flex: 1, minHeight: 46, fontSize: '0.92rem', fontWeight: 'bold' }}>
+          {b.saving ? 'Enregistrement…' : '💾 Enregistrer le CV'}
+        </button>
+        <Link className="btn btn-ghost" href={cvSlug ? `/${cvSlug}` : (b.targetUserId ? '/admin' : '/profil?me=1')} target="_blank">
+          {b.targetUserId ? 'Voir ↗' : 'Voir ↗'}
+        </Link>
+      </div>
     </div>
   )
 }

@@ -25,10 +25,18 @@ export default function ClientCineView({ cv }: ClientCineViewProps) {
     }
   }, [])
 
-  // Préparation de la galerie cinématique avec l'image de fond (cineBg) ou l'avatar
-  const gallery = cv.cineBg
-    ? [{ src: cv.cineBg, alt: `${cv.first} ${cv.last}`, position: `${cv.cineBgPosX ?? 50}% ${cv.cineBgPosY ?? 50}%` }]
-    : []
+  // Préparation de la galerie cinématique avec la liste d'images (cineImages), sinon l'image unique (cineBg)
+  const gallery = cv.cineImages && cv.cineImages.length > 0
+    ? cv.cineImages.map((img) => ({
+        src: img.url,
+        alt: `${cv.first} ${cv.last}`,
+        posX: img.posX ?? 50,
+        posY: img.posY ?? 50,
+        zoom: img.zoom ?? 1.25,
+      }))
+    : (cv.cineBg
+        ? [{ src: cv.cineBg, alt: `${cv.first} ${cv.last}`, posX: cv.cineBgPosX ?? 50, posY: cv.cineBgPosY ?? 50, zoom: cv.cropZoomCineBg ?? 1.25 }]
+        : []);
 
   return (
     <CineView

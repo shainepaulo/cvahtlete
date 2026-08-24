@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { CvData } from '@/app/actions/cv'
 import { normalizePublicLinks } from '@/utils/public-links'
 import { BlurValue } from '@/components/privacy/BlurValue'
+import { PlayerVideo } from '@/components/PlayerVideo'
 
 const ICONS: Record<string, React.ReactNode> = {
   x: (
@@ -151,7 +152,7 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
   const initials = ((cv.first || ' ')[0] + (cv.last || ' ')[0]).toUpperCase()
   const links = normalizePublicLinks(cv.links)
   const stats = (cv.stats ?? []) as Array<{ value: string; unit?: string; label: string }>
-  const palmares = (cv.palmares ?? []) as Array<{ icon: string; name: string; count: string }>
+  const palmares = (cv.palmares ?? []) as Array<{ icon: string; name: string; count: string; detail?: string }>
   const career = (cv.career ?? []) as Array<{ year: string; club: string; detail?: string }>
 
   return (
@@ -300,7 +301,10 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
               {palmares.map((t, i) => (
                 <div key={i} className="p-trophy reveal">
                   <span className="ti">{t.icon}</span>
-                  <span className="tn">{t.name}</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span className="tn">{t.name}</span>
+                    {t.detail && <span className="td" style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: 2 }}>{t.detail}</span>}
+                  </div>
                   <span className="tc">{t.count}</span>
                 </div>
               ))}
@@ -319,6 +323,19 @@ export default function ProfileView({ cv, isPreview, isOwn, hasPro }: Props) {
                   {c.detail && <div className="d">{c.detail}</div>}
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {cv.showSections?.videos !== false && cv.videos && cv.videos.length > 0 && (
+          <section className="p-block">
+            <h2 className="p-block-title">Vidéos de l&apos;athlète</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {cv.videos.map((vid, i) => {
+                const videoUrl = vid.url || (vid.title?.startsWith('http') || vid.title?.includes('youtu') || vid.title?.includes('vimeo') ? vid.title : '');
+                const videoTitle = videoUrl === vid.title ? '' : vid.title;
+                return videoUrl ? <PlayerVideo key={i} src={videoUrl} title={videoTitle} /> : null;
+              })}
             </div>
           </section>
         )}

@@ -55,7 +55,7 @@ export function BlurValue({ value, href, sensitive, forceVisible, fieldLabel, cv
       aria-live="polite"
       aria-label={state === 'pending' ? 'Demande en cours' : `Demander l'accès à ${fieldLabel}`}
     >
-      <span className="privacy-blur-value" aria-hidden="true">{value}</span>
+      <span className="privacy-blur-value" aria-hidden="true" style={{ minWidth: '115px', display: 'inline-block' }}>{value}</span>
       <span className="privacy-blur-overlay">
         {state === 'pending' ? (
           <>

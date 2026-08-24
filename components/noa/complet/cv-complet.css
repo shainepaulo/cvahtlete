@@ -170,6 +170,8 @@
 }
 .cvc-page .contact-value {
   font-size: 0.85rem; font-weight: 600; color: var(--light);
+}
+.cvc-page span.contact-value, .cvc-page a.contact-value {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
