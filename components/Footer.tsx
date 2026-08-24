@@ -16,7 +16,7 @@ export default function Footer() {
           <span className="mark">
             <Logo />
           </span>
-          ATHLETE&nbsp;CV
+          CVATHLETE
         </Link>
         <div className="footer-links">
           {PAGES.map((p) => (
@@ -27,7 +27,7 @@ export default function Footer() {
           <Link href="/cgv">CGV</Link>
           <Link href="/mentions-legales">Mentions légales</Link>
         </div>
-        <p className="copy">© 2026 ATHLETE CV — Ton CV d&apos;athlète, en un lien.</p>
+        <p className="copy">© 2026 CVAthlete — Ton CV d&apos;athlète, en un lien.</p>
       </div>
     </footer>
   )

@@ -23,7 +23,7 @@ const jost = Jost({
 })
 
 export const metadata: Metadata = {
-  title: 'ATHLETE CV — Ton CV d\'athlète, en un lien',
+  title: 'CVAthlete — Ton CV d\'athlète, en un lien',
   description:
     'Un CV d\'élite qui rassemble tout ton parcours d\'athlète. Un seul lien à mettre en bio ou à envoyer aux sponsors.',
 }

@@ -35,7 +35,7 @@ export default function Navbar({ user }: { user: NavUser }) {
           <span className="mark">
             <Logo />
           </span>
-          ATHLETE&nbsp;CV
+          CVATHLETE
         </Link>
         <button
           className="nav-toggle"

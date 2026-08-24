@@ -356,7 +356,7 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
       {/* ---- Bouton retour vers Athlete CV ---- */}
       {!panelOpen && (
         <Link href="/dashboard" className="cv-back-to-site" aria-label="Retour au site">
-          ← ATHLETE CV
+          ← CVATHLETE
         </Link>
       )}
 

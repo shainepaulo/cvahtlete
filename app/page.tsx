@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'ATHLETE CV — Ton CV d\'athlète, en un lien',
+  title: 'CVAthlete — Ton CV d\'athlète, en un lien',
   description:
     'Le profil qui te fait signer. Stats, palmarès et moments forts réunis sur une page que tu envoies aux clubs, agents et sponsors. Un seul lien.',
 }
