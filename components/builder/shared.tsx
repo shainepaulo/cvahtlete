@@ -525,7 +525,10 @@ export function useCvBuilder(nextPath: string) {
     visibility, slug: user?.cv?.slug,
     characteristics: characteristics.filter((r) => r.name?.trim() && r.value?.trim()),
     showCharacteristics,
-    showSections,
+    showSections: {
+      ...showSections,
+      _videos: videos.filter((r) => Object.values(r).some((v) => v?.trim()))
+    },
     birthDate: birthDate || undefined,
     nationality: nationality || undefined,
     eligibility: eligibility || undefined,
