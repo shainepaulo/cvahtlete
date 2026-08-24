@@ -24,7 +24,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CvData } from "@/app/actions/cv";
-import { PlayerVideo } from "@/components/PlayerVideo";
+import { VideosModal } from "@/components/VideosModal";
 
 // ===========================================================================
 // 1. CHARTE — Tomorrow Night Blue
@@ -232,6 +232,8 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
 
   const reducedMotion = useReducedMotion() ?? false;
   const [panelOpen, setPanelOpen] = useState(false);
+  const [videosOpen, setVideosOpen] = useState(false);
+  const [videoIndex, setVideoIndex] = useState(0);
 
   // ---- Galerie photo de fond : fondu noir entre les images (pattern Noa) --
   const photos = data.gallery;
@@ -325,7 +327,7 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
 
   const hasVideos = videosList.length > 0;
   const hasDetails =
-    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0 || hasVideos;
+    data.stats.length > 0 || data.palmares.length > 0 || data.career.length > 0;
 
   // ---- Verrou premium : le booléen vient du SERVEUR (entitlements RLS) ----
   if (!cinematic) {
@@ -487,7 +489,10 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
           {hasVideos && (
             <button
               type="button"
-              onClick={() => setPanelOpen(true)}
+              onClick={() => {
+                setVideoIndex(0);
+                setVideosOpen(true);
+              }}
               className="font-body flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm backdrop-blur-md transition hover:border-accent/50"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-accent" aria-hidden>
@@ -663,21 +668,19 @@ export default function CineView({ cv, cinematic, tagline, gallery, completHref,
               </>
             )}
 
-            {cv.showSections?.videos !== false && cv.videos && cv.videos.length > 0 && (
-              <>
-                <h4 className="font-display mt-8 text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">
-                  Vidéos
-                </h4>
-                <div className="space-y-4">
-                  {cv.videos.map((vid, i) => {
-                    const videoUrl = vid.url || (vid.title?.startsWith('http') || vid.title?.includes('youtu') || vid.title?.includes('vimeo') ? vid.title : '');
-                    const videoTitle = videoUrl === vid.title ? '' : vid.title;
-                    return videoUrl ? <PlayerVideo key={i} src={videoUrl} title={videoTitle} /> : null;
-                  })}
-                </div>
-              </>
-            )}
           </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* ---- Fenêtre dédiée aux vidéos : jamais imbriquée dans le panneau ---- */}
+      <AnimatePresence>
+        {videosOpen && cv.showSections?.videos !== false && hasVideos && (
+          <VideosModal
+            videos={videosList}
+            index={videoIndex}
+            onIndexChange={setVideoIndex}
+            onClose={() => setVideosOpen(false)}
+          />
         )}
       </AnimatePresence>
     </div>

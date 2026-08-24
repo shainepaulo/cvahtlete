@@ -37,6 +37,7 @@ export function PlayerVideo({ src, title, autoPlay = false, className = '' }: Pl
   const [volume, setVolume] = useState(1.0)
   const [isMuted, setIsMuted] = useState(false) // Son activé par défaut
   const [showControls, setShowControls] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const embedUrl = getEmbedUrl(src)
 
@@ -44,16 +45,19 @@ export function PlayerVideo({ src, title, autoPlay = false, className = '' }: Pl
     const video = videoRef.current
     if (!video || embedUrl) return
 
+    setLoadError(false)
     video.volume = volume
     video.muted = false // Son activé par défaut par exigence
 
     const onLoadedMetadata = () => setDuration(video.duration || 0)
     const onTimeUpdate = () => setCurrentTime(video.currentTime || 0)
     const onEnded = () => setIsPlaying(false)
+    const onError = () => setLoadError(true)
 
     video.addEventListener('loadedmetadata', onLoadedMetadata)
     video.addEventListener('timeupdate', onTimeUpdate)
     video.addEventListener('ended', onEnded)
+    video.addEventListener('error', onError)
 
     if (autoPlay) {
       video.play().then(() => setIsPlaying(true)).catch(() => {
@@ -68,6 +72,7 @@ export function PlayerVideo({ src, title, autoPlay = false, className = '' }: Pl
       video.removeEventListener('loadedmetadata', onLoadedMetadata)
       video.removeEventListener('timeupdate', onTimeUpdate)
       video.removeEventListener('ended', onEnded)
+      video.removeEventListener('error', onError)
     }
   }, [src, autoPlay, embedUrl])
 
@@ -177,6 +182,38 @@ export function PlayerVideo({ src, title, autoPlay = false, className = '' }: Pl
         playsInline
         style={{ width: '100%', display: 'block', maxHeight: 480, objectFit: 'contain', cursor: 'pointer', background: '#000' }}
       />
+
+      {loadError && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          padding: 24,
+          textAlign: 'center',
+          background: 'rgba(4,9,20,0.92)',
+          zIndex: 20,
+        }}>
+          <span style={{ fontSize: '1.6rem' }}>⚠️</span>
+          <p style={{ margin: 0, color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>
+            Cette vidéo n&apos;a pas pu être chargée
+          </p>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', maxWidth: 280 }}>
+            Le lien est peut-être expiré ou le format n&apos;est pas lisible par ce navigateur.
+          </p>
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--gold, #ffd98a)', textDecoration: 'underline' }}
+          >
+            Ouvrir le fichier directement
+          </a>
+        </div>
+      )}
 
       {/* Commandes vidéo personnalisées avec Slider d'avancement/recul */}
       <div style={{

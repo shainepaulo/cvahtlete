@@ -142,6 +142,8 @@
   background: #fff; color: #0a0a0a;
   border-radius: 24px; overflow: hidden;
   box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+  touch-action: pan-y;
+  transition: transform 0.25s cubic-bezier(.22,.61,.36,1);
 }
 .noa-ci-video-frame {
   position: relative; aspect-ratio: 16 / 9; background: #000; overflow: hidden;
@@ -156,34 +158,78 @@
   transform: translate(-50%, calc(-50% + var(--vshift, 0%))) scale(var(--vzoom, 1.25));
   border: 0;
 }
-.noa-ci-video-tools {
-  position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; z-index: 2;
+/* Barre de contrôle « vrai lecteur » — scrub + lecture/son/plein écran,
+   posée en overlay sur le cadre recadré (sibling de l'iframe, donc non
+   affectée par le zoom/décalage appliqués à la vidéo). Auto-masquée
+   pendant la lecture, révélée au survol / tap (classe .show). */
+.noa-ci-video-controls {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  background: linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 60%, transparent 100%);
+  padding: 22px 12px 8px;
+  opacity: 0; transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
 }
-.noa-ci-video-tools button {
-  width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.25);
-  color: #fff; font-size: 1rem; cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+.noa-ci-video-controls.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.noa-ci-scrub { position: relative; height: 16px; display: flex; align-items: center; cursor: pointer; }
+.noa-ci-scrub .track {
+  position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.3); overflow: hidden;
 }
-.noa-ci-video-tools button:hover { background: rgba(0,0,0,0.8); transform: scale(1.06); }
-.noa-ci-video-num {
-  position: absolute; right: 14px; bottom: 14px; z-index: 2;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: #fff; color: #c4a747;
-  display: grid; place-items: center;
-  font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+.noa-ci-scrub .fill { height: 100%; background: var(--gold, #ffd98a); }
+.noa-ci-scrub input[type='range'] {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  appearance: none; background: transparent; cursor: pointer;
 }
-.noa-ci-video-body { padding: 22px 26px 26px; }
+.noa-ci-scrub input[type='range']::-webkit-slider-thumb {
+  appearance: none; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--gold, #ffd98a); box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  margin-top: 0;
+}
+.noa-ci-scrub input[type='range']::-moz-range-thumb {
+  width: 13px; height: 13px; border: none; border-radius: 50%;
+  background: var(--gold, #ffd98a); box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.noa-ci-scrub input[type='range']::-moz-range-track { background: transparent; }
+.noa-ci-video-controls .row {
+  display: flex; align-items: center; gap: 4px; padding: 6px 2px 2px;
+}
+.noa-ci-video-controls .row button {
+  width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center;
+  background: transparent; border: none; color: #fff; cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+.noa-ci-video-controls .row button:hover { background: rgba(255,255,255,0.14); }
+.noa-ci-video-controls .row button svg { width: 20px; height: 20px; }
+.noa-ci-video-controls .time {
+  font-family: var(--font-body); font-size: 0.78rem; color: rgba(255,255,255,0.9);
+  font-variant-numeric: tabular-nums; margin-left: 2px;
+}
+.noa-ci-video-controls .spacer { flex: 1; }
+.noa-ci-video-controls .count {
+  font-size: 0.78rem; color: rgba(255,255,255,0.75); font-weight: 600; margin-right: 6px;
+}
+
+/* Fiche descriptive — même logique de lecture qu'une page vidéo (titre,
+   méta, description), sous le lecteur plutôt que superposée dessus. */
+.noa-ci-video-body { padding: 20px 24px 26px; }
+.noa-ci-video-body .head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+}
 .noa-ci-video-body h3 {
-  font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;
-  color: #002451; margin: 0;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.4rem;
+  color: #002451; margin: 0; line-height: 1.25;
 }
 .noa-ci-video-body .cat {
-  margin: 6px 0 0; font-size: 0.75rem; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase; color: #c4a747;
+  flex-shrink: 0; margin-top: 2px; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: #8a6f1f;
+  background: rgba(196,167,71,0.14); border-radius: 100px; padding: 6px 12px;
+  white-space: nowrap;
 }
-.noa-ci-video-body .desc { margin: 12px 0 0; color: #4b5563; font-size: 0.95rem; line-height: 1.6; }
+.noa-ci-video-body .desc {
+  margin: 14px 0 0; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.08);
+  color: #4b5563; font-size: 0.95rem; line-height: 1.65;
+}
 .noa-ci-videos-nav { display: flex; align-items: center; gap: 20px; }
 .noa-ci-videos-nav > button {
   width: 48px; height: 48px; border-radius: 50%;
@@ -200,6 +246,21 @@
   transition: background 0.2s, transform 0.2s;
 }
 .noa-ci-videos-nav .dots button.on { background: var(--gold, #ffd98a); transform: scale(1.25); }
+@media (max-width: 640px) {
+  .noa-ci-videos {
+    padding: 0; gap: 14px; justify-content: flex-start;
+    padding-top: max(64px, calc(env(safe-area-inset-top) + 56px));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .noa-ci-video-card { width: 100%; border-radius: 0; }
+  .noa-ci-video-body { padding: 16px 18px 20px; }
+  .noa-ci-video-body .head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .noa-ci-video-body h3 { font-size: 1.2rem; }
+  .noa-ci-video-controls .row button { width: 44px; height: 44px; }
+  .noa-ci-videos-close { top: max(16px, env(safe-area-inset-top)); }
+  .noa-ci-videos-nav > button { width: 44px; height: 44px; }
+}
 .noa-ci-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(420px,88vw); z-index: 5; background: linear-gradient(160deg,rgba(10,22,44,0.97),rgba(4,12,28,0.98)); backdrop-filter: blur(16px); border-left: 1px solid rgba(255,255,255,0.1); box-shadow: -30px 0 80px rgba(0,0,0,0.5); padding: 70px 34px 40px; overflow-y: auto; transform: translateX(100%); transition: transform 0.5s cubic-bezier(.22,.61,.36,1); scrollbar-width: thin; scrollbar-color: var(--a,#8bb6ff) transparent; }
 .noa-ci-panel.open { transform: translateX(0); }
 .noa-ci-panel::-webkit-scrollbar { width: 6px; }
