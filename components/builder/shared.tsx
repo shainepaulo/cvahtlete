@@ -172,7 +172,7 @@ export function DynRows({ kind, rows, onChange }: { kind: RowSection; rows: Row[
                 <input key={k} className="mini" placeholder={ph} value={row[k] || ''}
                   maxLength={short ? LIMITS.rowShort : LIMITS.rowText}
                   onChange={(e) => update(i, k, e.target.value)}
-                  style={short ? { maxWidth: 90 } : undefined}
+                  style={k === 'icon' ? { textAlign: 'center' } : (short ? { maxWidth: 140 } : undefined)}
                 />
               )
             })}
