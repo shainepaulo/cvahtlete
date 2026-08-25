@@ -295,7 +295,7 @@ function UserCard({ row, currentEmail }: { row: AdminUserRow; currentEmail: stri
 
           {canManage && (
             <a
-              href={`/builder/classique?u=${row.id}`}
+              href={`/builder/classique?u=${row.id}&mode=new`}
               className="mini-btn"
               style={{ textDecoration: 'none', background: 'rgba(255,255,255,0.04)', color: '#fff', padding: '6px 12px', fontSize: '0.76rem', borderRadius: 6, textAlign: 'center', marginTop: 4 }}
             >

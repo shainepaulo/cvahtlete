@@ -166,6 +166,7 @@ export interface UpsertCvInput {
 
 export interface UpsertCvResult {
   slug?: string;
+  id?: string;
   error?: string;
 }
 
@@ -364,6 +365,8 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     contact_email: (input.contactEmail ?? '').slice(0, 120) || null,
   };
 
+  let cvIdSaved = existing?.id;
+
   if (existing) {
     let { error } = await supabase.from("cvs").update(row).eq("id", existing.id);
     if (error && error.code === "PGRST204" && "videos" in row) {
@@ -374,12 +377,13 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
     }
     if (error) return { error: `Erreur lors de la sauvegarde : ${error.message} (${error.code})` };
   } else {
-    let { error } = await supabase.from("cvs").insert(row);
+    let { data: inserted, error } = await supabase.from("cvs").insert(row).select("id").maybeSingle();
     if (error && error.code === "PGRST204" && "videos" in row) {
       const rowWithoutVideos = { ...row };
       delete (rowWithoutVideos as { videos?: unknown }).videos;
-      const retry = await supabase.from("cvs").insert(rowWithoutVideos);
+      const retry = await supabase.from("cvs").insert(rowWithoutVideos).select("id").maybeSingle();
       error = retry.error;
+      inserted = retry.data;
     }
     if (error) {
       if (error.code === "23505") {
@@ -387,11 +391,12 @@ export async function upsertCv(input: UpsertCvInput): Promise<UpsertCvResult> {
       }
       return { error: `Erreur lors de la création : ${error.message} (${error.code})` };
     }
+    cvIdSaved = inserted?.id;
   }
 
   revalidatePath(`/${slug}`);
   revalidatePath("/dashboard");
-  return { slug };
+  return { slug, id: cvIdSaved };
 }
 
 // ─── Lecture : liste de tous les CV d'un compte ──────────────────────────────

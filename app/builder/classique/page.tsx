@@ -157,8 +157,8 @@ function ClassiqueContent() {
           <Link href={b.targetUserId ? "/admin" : "/builder"} className="b-back">
             ← {b.targetUserId ? 'Retour console admin' : 'Espaces de création'}
           </Link>
-          <h1>📄 CV Classique</h1>
-          <p>{b.user.planName || ''}</p>
+          <h1>{b.isNew ? '✨ Nouveau joueur' : '📄 CV Classique'}</h1>
+          <p>{b.user.planName || ''}{b.isNew ? ' · Création d\'un nouveau CV' : (b.first || b.last ? ` · Édition de ${b.first} ${b.last}` : '')}</p>
         </div>
         <div className="b-actions">
           <select value={b.visibility} onChange={(e) => b.setVisibility(e.target.value)} aria-label="Visibilité">

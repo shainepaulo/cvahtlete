@@ -369,7 +369,9 @@ export function useCvBuilder(nextPath: string) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const targetUserId = searchParams.get('u') || undefined
-  const cvId = searchParams.get('cv') || undefined
+  const rawCvId = searchParams.get('cv') || undefined
+  const isNew = searchParams.get('new') === '1' || searchParams.get('mode') === 'new' || rawCvId === 'new'
+  const cvId = isNew ? undefined : rawCvId
   const [user, setUser] = useState<BuilderUser | null>(null)
   const [saving, setSaving] = useState(false)
   const [alertMsg, setAlertMsg] = useState<BuilderAlertState | null>(null)
@@ -433,6 +435,9 @@ export function useCvBuilder(nextPath: string) {
         cv: null,
       })
     })
+
+    if (isNew) return
+
     getMyCv(targetUserId, cvId).then((cv) => {
       if (!cv) return
       setUser((u) => u ? { ...u, cv: { slug: cv.slug } } : u)
@@ -503,7 +508,7 @@ export function useCvBuilder(nextPath: string) {
       setContactPhone(cv.contactPhone || '')
       setContactEmail(cv.contactEmail || '')
     })
-  }, [router, nextPath, targetUserId, cvId])
+  }, [router, nextPath, targetUserId, cvId, isNew])
 
   /** Payload complet du CV (aperçu postMessage ET enregistrement). */
   const buildPayload = useCallback(() => ({
@@ -581,12 +586,21 @@ export function useCvBuilder(nextPath: string) {
     const slug = result.slug!
     const link = `${window.location.origin}/${slug}`
     setUser((u) => u ? { ...u, cv: { slug } } : u)
-    setAlertMsg({ msg: 'Répertoire enregistré !', ok: true, link, slug })
+    setAlertMsg({ msg: isNew ? 'Nouveau joueur créé avec succès !' : 'Répertoire enregistré !', ok: true, link, slug })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    if (isNew && result.id) {
+      const params = new URLSearchParams(window.location.search)
+      params.delete('new')
+      if (params.get('mode') === 'new') params.delete('mode')
+      params.set('cv', result.id)
+      router.replace(`${window.location.pathname}?${params.toString()}`)
+    }
   }
 
   return {
     user, saving, alertMsg, setAlertMsg, save, buildPayload,
+    isNew,
     first, setFirst, last, setLast, sport, setSport, discipline, setDiscipline,
     bio, setBio, tagline, setTagline, location, setLocation,
     colorA, setColorA, colorB, setColorB,

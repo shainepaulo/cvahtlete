@@ -113,7 +113,7 @@ export default async function DashboardPage() {
               </div>
               {(canMultiCv || cvs.length === 0) && canAddMore && (
                 <Link
-                  href="/builder/classique"
+                  href="/builder/classique?mode=new"
                   className="btn btn-primary"
                   style={{ padding: '8px 14px', fontSize: '0.82rem' }}
                 >
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
               <div style={{ textAlign: 'center', padding: '30px 20px', color: 'var(--muted-2)' }}>
                 <p style={{ fontSize: '1.4rem', marginBottom: 8 }}>📄</p>
                 <p style={{ fontSize: '0.88rem' }}>Aucun CV créé pour le moment.</p>
-                <Link href="/builder/classique" className="btn btn-primary" style={{ marginTop: 14, display: 'inline-block' }}>
+                <Link href="/builder/classique?mode=new" className="btn btn-primary" style={{ marginTop: 14, display: 'inline-block' }}>
                   Créer mon premier CV
                 </Link>
               </div>
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
                         Voir ↗
                       </Link>
                       <Link
-                        href={`/builder/classique${canMultiCv ? `?cv=${cv.id}` : ''}`}
+                        href={`/builder/classique?cv=${cv.id}`}
                         className="mini-btn"
                         style={{ textDecoration: 'none', padding: '4px 8px', fontSize: '0.7rem', background: 'rgba(56,216,255,0.1)', color: '#38d8ff' }}
                       >
