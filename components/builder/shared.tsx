@@ -473,6 +473,7 @@ export function useCvBuilder(nextPath: string) {
       setCineImages(initialImages)
       if ((cv.stats as Row[])?.length) setStats(cv.stats as Row[])
       if ((cv.palmares as Row[])?.length) setPalmares(cv.palmares as Row[])
+      if ((cv.career as Row[])?.length) setCareer(cv.career as Row[])
       const loadedVideos = (Array.isArray(cv.videos) && (cv.videos as Row[]).length > 0)
         ? (cv.videos as Row[])
         : (cv.showSections && typeof cv.showSections === 'object' && Array.isArray((cv.showSections as Record<string, unknown>)._videos) && ((cv.showSections as Record<string, unknown>)._videos as Row[]).length > 0
